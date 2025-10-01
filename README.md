@@ -20,6 +20,19 @@ with nq.new(purpose=nq.Purpose.CLIENT) as queue:
     message = queue.get()
 ```
 
+## Install
+### Production
+```bash
+pip install net-queue
+```
+
+### Development
+```bash
+git clone ssh://git@lorca.act.uji.es:2222/ciber-cafe/net-queue.git
+cd net-queue
+pip install -e .
+```
+
 ## Documentation
 ### Constatns
 - `Protocol`:
