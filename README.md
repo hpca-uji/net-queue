@@ -194,10 +194,6 @@ pip install -e .
 
   Extends: `BufferedIOBase`
 
-  - `empty -> bool`
-
-    Is stream empty (would read block)
-
   - `nchunks -> int`
 
     Number of chunks held in stream
@@ -205,6 +201,10 @@ pip install -e .
   - `nbytes -> int`
 
     Number of bytes held in stream
+
+  - `empty() -> bool`
+
+    Is stream empty (would read block)
 
   - `readchunk() -> memoryview`
 

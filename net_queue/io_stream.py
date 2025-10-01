@@ -56,10 +56,6 @@ class Stream(io.BufferedIOBase):
         self._chunks = deque[memoryview]()
 
     # stream properties
-    def empty(self) -> bool:
-        """Is stream empty (would read block)"""
-        return not bool(self._chunks)
-
     @property
     def nchunks(self) -> int:
         """Number of chunks held in stream"""
@@ -69,6 +65,10 @@ class Stream(io.BufferedIOBase):
     def nbytes(self) -> int:
         """Number of bytes held in stream"""
         return self._nbytes
+
+    def empty(self) -> bool:
+        """Is stream empty (would read block)"""
+        return not bool(self._chunks)
 
     # stream base methods
     def unreadchunk(self, chunk: memoryview) -> int:
