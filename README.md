@@ -122,7 +122,7 @@ pip install -e .
   - `port: int = 51966`
 
 ### Functions
-- `nq.new(protocol, purpose, options)`
+- `new(protocol, purpose, options)`
 
   Create a comunicator.
 
