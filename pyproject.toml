@@ -3,9 +3,23 @@ name = "net-queue"
 version = "0.1.0"
 description = "Easy & fast network communications using queues"
 readme = "README.md"
+license = "GPL-3.0-or-later"
+license-files = ["LICENSE"]
 authors = [
     { name = "Miguel Ángel Prosper", email = "mprosper@uji.es" }
 ]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: System :: Networking",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Utilities"
+]
+keywords = ["Communication", "Protocol", "Python"]
+urls = { Homepage = "https://github.com/hpca-uji/net-queue", Repository = "https://github.com/hpca-uji/net-queue.git"}
+
 requires-python = ">=3.13"
 dependencies = [
     "bidict>=0.23.1",
