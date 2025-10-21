@@ -28,7 +28,7 @@ pip install net-queue
 
 ### Development
 ```bash
-git clone ssh://git@lorca.act.uji.es:2222/ciber-cafe/net-queue.git
+git clone https://github.com/hpca-uji/net-queue.git
 cd net-queue
 pip install -e .
 ```
