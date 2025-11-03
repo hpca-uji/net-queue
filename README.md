@@ -327,7 +327,7 @@ Put
 - Communication will not modify object
 - Consumer must not modify object util future resolved
 - Resolved futures acknowledge peer reception
-- Cancelled futures indicates peer diconnected
+- ResourceClosed error futures indicates peer diconnected
 
 Get
 - Always block
