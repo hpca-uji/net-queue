@@ -13,7 +13,8 @@ __all__ = (
     "memoryview_index",
     "Stream",
     "Packer",
-    "Serializer"
+    "PickleSerializer",
+    "BytesSerializer"
 )
 
 
@@ -313,43 +314,57 @@ class Packer:
     _format_size = "!Q"
     _sizeof_size = struct.calcsize(_format_size)
 
-    def unpack(self, lower: Stream) -> Stream:
+    def unpack(self, transport: Stream, size: int = -1) -> Stream:
         """Extracts stream from packer (raises BlockingIOError if no stream)"""
         # Check if size available
-        size = self._sizeof_size
-        if lower.nbytes < size:
+        rb = self._sizeof_size
+        if transport.nbytes < rb:
             raise BlockingIOError()
 
+        # Read size
+        chunk = transport.read(rb)
+        rb = struct.unpack(self._format_size, chunk)[0]
+
+        # Compute limits
+        if size >= 0 and size < rb:
+            extra = rb - size
+            rb = size
+        else:
+            extra = 0
+
         # Check if data available
-        chunk = lower.read(size)
-        size = struct.unpack(self._format_size, chunk)[0]
-        if lower.nbytes < size:
-            lower.unreadchunk(chunk)
+        if transport.nbytes < rb:
+            transport.unreadchunk(chunk)
             raise BlockingIOError()
         else:
             chunk.release()
 
         # Ensure contained reads
         upper = Stream()
-        while size > 0:
-            chunk = lower.read1(size)
+        while rb > 0:
+            chunk = transport.read1(rb)
             upper.writechunk(chunk)
-            size -= len(chunk)
+            rb -= len(chunk)
+
+        # Write truncated header
+        if extra > 0:
+            pack = struct.pack(self._format_size, extra)
+            transport.unreadchunk(byteview(pack))
 
         # Return stream
         return upper
 
-    def pack(self, lower: Stream, upper: Stream) -> int:
+    def pack(self, transport: Stream, data: Stream) -> int:
         """Inserts stream into packer, returns bytes written"""
         # Ensure contained writes
-        size = upper.nbytes
-        pack = struct.pack(self._format_size, size)
-        size += lower.write(pack)
-        lower.writechunks(upper.readchunks())
-        return size
+        wb = data.nbytes
+        pack = struct.pack(self._format_size, wb)
+        wb += transport.write(pack)
+        transport.writechunks(data.readchunks())
+        return wb
 
 
-class Serializer:
+class PickleSerializer:
     """Pickle-stream serializer"""
 
     __slots__ = ("_dump", "_load")
@@ -396,3 +411,19 @@ class Serializer:
     def load(self, data: Stream):
         """Transform a stream into useful data"""
         return self._load(data)
+
+
+class BytesSerializer:
+    """Bytes-stream serializer"""
+
+    __slots__ = ("_dump", "_load")
+
+    def dump(self, data: bytes) -> Stream:
+        """Transform a data into a stream"""
+        stream = Stream()
+        stream.write(data)
+        return stream
+
+    def load(self, data: Stream) -> bytes:
+        """Transform a stream into useful data"""
+        return data.read().tobytes()

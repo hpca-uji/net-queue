@@ -3,7 +3,7 @@
 import uuid
 
 from net_queue import Communicator
-from net_queue.io_stream import Stream
+from net_queue.stream import Stream
 
 
 class Server[T](Communicator[T]):

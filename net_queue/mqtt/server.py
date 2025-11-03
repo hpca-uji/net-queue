@@ -8,7 +8,7 @@ import paho.mqtt.client as mqtt_client
 from net_queue import server
 from net_queue import asynctools
 from net_queue.mqtt import Protocol
-from net_queue.io_stream import Stream
+from net_queue.stream import Stream
 from net_queue import CommunicatorOptions
 
 

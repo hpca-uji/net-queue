@@ -21,7 +21,7 @@ from bidict import bidict
 from net_queue import asynctools
 from net_queue.asynctools import merge_futures
 from net_queue.asynctools import thread_queue
-from net_queue.io_stream import Packer, Serializer, Stream, byteview
+from net_queue.stream import Packer, PickleSerializer, Stream, byteview
 
 
 __all__ = (
@@ -101,8 +101,9 @@ class ConnectionOptions:
 @dataclass(order=False, slots=True, frozen=True)
 class SerializationOptions:
     """Serialization options"""
-    load: col_abc.Callable[[Stream], typing.Any] = Serializer().load
-    dump: col_abc.Callable[[typing.Any], Stream] = Serializer().dump
+    max_size: int = -1
+    load: col_abc.Callable[[Stream], typing.Any] = PickleSerializer().load
+    dump: col_abc.Callable[[typing.Any], Stream] = PickleSerializer().dump
 
 
 @dataclass(order=False, slots=True, frozen=True)
@@ -126,15 +127,15 @@ class CommunicatorOptions:
 class SessionData:
     """Connection data"""
 
-    def __init__(self, options: ConnectionOptions = ConnectionOptions()) -> None:
+    def __init__(self, options: CommunicatorOptions = CommunicatorOptions()) -> None:
         """Initialize connection state"""
         self.peer = UUID_NIL
         self._options = options
         self.state = ConnectionState(value=0)
 
         self._packer = Packer()
-        self._merge_buffer = byteview(bytearray(self._options.merge_size))
-        self._merge_size = min(self._options.merge_size, self._options.efficient_size)
+        self._merge_buffer = byteview(bytearray(self._options.connection.merge_size))
+        self._merge_size = min(self._options.connection.merge_size, self._options.connection.efficient_size)
 
         self.put_queue = SimpleQueue[Stream]()
         self.get_queue = SimpleQueue[Stream]()
@@ -154,7 +155,7 @@ class SessionData:
 
     def get(self) -> Stream:
         """Unpack from get buffer"""
-        return self._packer.unpack(self.get_buffer)
+        return self._packer.unpack(self.get_buffer, self._options.serialization.max_size)
 
     def put(self, stream: Stream) -> Future[None]:
         """Push stream to put queue"""
@@ -177,7 +178,7 @@ class SessionData:
         """Merge get buffer"""
         with Stream() as stream:
 
-            while not self.get_buffer.empty() and stream.nbytes < self._options.merge_size:
+            while not self.get_buffer.empty() and stream.nbytes < self._options.connection.merge_size:
                 chunk = self.get_buffer.unwritechunk()
 
                 if len(chunk) >= self._merge_size:
@@ -210,7 +211,7 @@ class SessionData:
         if self.put_buffer.nchunks > 1 and len(self.put_buffer.peekchunk()) < self._merge_size:
             self._put_merge()
 
-        return self.put_buffer.read1(self._options.max_size)
+        return self.put_buffer.read1(self._options.connection.max_size)
 
     def put_commit(self, size: int) -> col_abc.Iterable[Future[None]]:
         """Mark size's bytes as fully transmitted (or freeable)"""
@@ -231,7 +232,7 @@ class SessionData:
 
     def put_flush_queue(self) -> None:
         """Flush put queue"""
-        while self.put_buffer.nbytes < self._options.max_size:
+        while self.put_buffer.nbytes < self._options.connection.max_size:
             try:
                 stream = self.put_queue.get_nowait()
             except Empty:
@@ -286,7 +287,7 @@ class Communicator[T](abc.ABC):
 
     def _new_session_data(self) -> SessionData:
         """Generate new connection state data"""
-        return SessionData(options=self.options.connection)
+        return SessionData(options=self.options)
 
     def _session_ini(self, peer: uuid.UUID) -> None:
         """Send session ini message"""

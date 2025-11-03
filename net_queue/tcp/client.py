@@ -10,7 +10,7 @@ from concurrent.futures import Future
 
 from net_queue import client
 from net_queue.tcp import Protocol
-from net_queue.io_stream import Stream
+from net_queue.stream import Stream
 from net_queue import CommunicatorOptions
 
 

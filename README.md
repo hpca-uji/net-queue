@@ -88,11 +88,15 @@ pip install -e .
 
   Serialization options
 
-  - `load: Callable[[Stream], Any] = Serializer().load`
+  - `max_size: int = -1` (unlimited)
+
+    Maximun serialization size before attempting deserialization.
+
+  - `load: Callable[[Stream], Any] = PickleSerializer().load`
 
     Message deserialization handler
 
-  - `dump: Callable[[Any], Stream] = Serializer().dump`
+  - `dump: Callable[[Any], Stream] = PickleSerializer().dump`
 
     Message serialization handler
 
@@ -178,7 +182,7 @@ pip install -e .
 
   Concrete communicator implementation fot the given protocol and purpose
 
-- `io_stream.Stream()`
+- `stream.Stream()`
 
   Zero-copy non-blocking pipe-like
 
@@ -250,7 +254,7 @@ pip install -e .
 
     Shallow copy of stream
 
-- `io_stream.Serializer(...)`
+- `stream.PickleSerializer(...)`
 
   Pickle-stream serializer
 
@@ -274,6 +278,17 @@ pip install -e .
 
     Transform a stream into useful data
 
+- `stream.BytesSerializer(...)`
+
+  Bytes-stream serializer
+
+  - `load(data: bytes) -> Stream`
+
+    Transform bytes into a stream
+
+  - `dump(data: Stream) -> bytes`
+
+    Transform a stream into bytes
 
 ## Notes
 ### Communication conventions
