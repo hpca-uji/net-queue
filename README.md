@@ -359,6 +359,8 @@ Implement reconnection support. The protocol already has support for it, server 
 
 Implement two-way connection expiration and keep-alives. There is no reliable way to track connection drops between communication implementations. Most of them end up with memory leaks. If desired expiration periods could be long and automatic client reconnections could be allowed, enabling MQTT-like reliability without the cost.
 
+Implement message cancelling support. It is already plausible to cancel a message if it is queued but not buffered. However chaning the future from a pending state to running would cause a lock acquire.
+
 ## Acknowledgments
 The library has been partially supported by:
 - Project PID2023-146569NB-C22 "Inteligencia sostenible en el Borde-UJI" funded by the Spanish Ministry of Science, Innovation and Universities.
