@@ -71,18 +71,32 @@ pip install -e .
 
   Connection options
 
+  There are no definite values, depends on: usecase, OS/stack/version and link specs.
+  Its recommended to test your configuration (or preferably set them dynamicly).
+  There are *ruls of thumb* but they serve as a baseline.
+
   - `max_size: int = 4 * 1024 ** 2` (4 MiB)
 
     Maximun message size to send to underlying protocol before splitting.
+
+    Selection: Bandwidth-delay product of network (less +streaming, more +bursty).
+    Default: Tipical connection (80Mbps @ 50ms).
 
   - `merge_size: int = max_size`
 
     Maximun message size to merge to when chunks are too small to efficently send.
     Internally a buffer of this size is preallocated on construction.
 
+    Selection: Max size but tunable for RAM/CPU usage (less -RAM/+CPU, more +RAM/-CPU).
+    Default: Balanced RAM/CPU usage.
+
   - `efficient_size: int = max_size / 64`
 
     Minimum message size to consider the send efficient before attempting merging.
+    If no more massages are queued then the message will be sent as-is.
+
+    Selection: Amortice overhead of abstractions/syscalls/headers (less -latency, more +efficiency).
+    Default: Maximun TCP segment size.
 
 - `SerializationOptions(...)`
 
@@ -338,14 +352,15 @@ Close
 - Always block
 - Server waits for peers to disconnect
 
-### gRPC
-gRPC does not conform well to a async send & async receive model, it expects remote procedure calls to be called, processed and responded. To simulate this model we created a bidirectional streaming procedure. Sent data is queued at the server, recived data is polled until available.
-
-Polling is implemented with a exponential backoff time and a limit. The gRPC library queues requests, so requests would always be replyed in a timely maner, but we do not want to hogh the CPU or network with usesless requests.
-
-It is important to not hold the prodedures indefinitely, since this could starve the server of threads. Additionaly, if a streaming direction was already closed, messages could end up queued forever if not restarted.
+### TCP
+Library: socket
+Parallelism: Thread pool (n+1+1 threads)
 
 ### MQTT
+Library: paho-mqtt
+Options: tcp transport, 0 QOS, 3.1.1 protocol
+Parallelism: Single threaded (1+1+1 threads)
+
 MQTT broker implementations are not common, so the server provided here is actually another client. Therefore the address and port provided to both, the client and server, should be the one of the actual broker, not where the server is running.
 
 The MQTT library handles comunications single-threaded, therefore operations on related callbacks are limited to pushing or pulling data from queues without blocking, so all operations are minimal and fast.
@@ -353,6 +368,21 @@ The MQTT library handles comunications single-threaded, therefore operations on 
 Peer-groups and global comunications are not optimized.
 
 First, chunked message ordering must be resolved. Single chunk order it is guaranteed by the protocol, even on with diferent topics. Second, peer-groups could be implemented using grouping requests that generate new UUID per group. This would reduce also reduce load on the broker.
+
+### gRPC
+Library: grpcio
+Options: compresion disabled, protobuf disabled
+Parallelism: Thread pool (n+1+? threads)
+
+gRPC does not conform well to a async send & async receive model, it expects remote procedure calls to be called, processed and responded. To simulate this model we created a bidirectional streaming procedure. Sent data is queued at the server, recived data is polled until available.
+
+This also means there is no eager client reception or eager server send, so polling is requiered.
+
+Polling is implemented with a exponential backoff time and a limit. The gRPC library queues requests, so requests would always be replyed in a timely maner, but we do not want to hogh the CPU or network with usesless requests.
+
+It is important to not hold the prodedures indefinitely, since this could starve the server of threads. Additionaly, if a streaming direction was already closed, messages could end up queued forever if not restarted.
+
+To alleviate network latency queues are flushed unidirectionally in turns, insted of interleaving directions. However on hight throughout applications this could lead to a very bursty receive pattern.
 
 ## Planned
 Implement reconnection support. The protocol already has support for it, server support is done, clients can reconnect but can not yet disconnect without flushing.

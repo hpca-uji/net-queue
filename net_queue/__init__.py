@@ -85,7 +85,14 @@ class NetworkLocation(NamedTuple):
 
 @dataclass(order=False, slots=True, frozen=True)
 class ConnectionOptions:
-    """Connection options"""
+    """
+    Connection options
+
+    There are no definite values, depends on: usecase, OS/stack/version and link specs.
+    Its recommended to test your configuration (or preferably set them dynamicly).
+    There are *ruls of thumb* but they serve as a baseline.
+    """
+
     max_size: int
     merge_size: int
     efficient_size: int
