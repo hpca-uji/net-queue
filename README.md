@@ -207,7 +207,7 @@ pip install -e .
   Reader is responsible of releasing chunks.
   Writer hands off responsibility over chunks.
 
-  Stream has `with` support.
+  Stream has `with` and `bytes` support.
   Stream has `copy.copy()` support, however it does not support `copy.deepcopy()`.
 
   Extends: `BufferedIOBase`
@@ -263,10 +263,18 @@ pip install -e .
   - `clear() -> None`
 
     Release all chunks
-  
+
   - `copy() -> Stream`
 
     Shallow copy of stream
+
+  - `tobytes() -> bytes`
+
+      Transform stream to bytes (will copy)
+
+  - `frombytes(b: Buffer) -> Stream`
+
+      Construct a stream from bytes
 
 - `stream.PickleSerializer(...)`
 

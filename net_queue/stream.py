@@ -46,8 +46,9 @@ class Stream(io.BufferedIOBase):
     Reader is responsible of releasing chunks.
     Writer hands off responsibility over chunks.
 
-    Stream has `with` support.
-    Stream has `copy.copy()` support, however it does not support `copy.deepcopy()`.    """
+    Stream has `with` and `bytes` support.
+    Stream has `copy()` support, however it does not support `deepcopy()`.
+    """
 
     __slots__ = ("_nbytes", "_chunks")
 
@@ -155,6 +156,21 @@ class Stream(io.BufferedIOBase):
         other = self.__class__()
         other.update(self._chunks)
         return other
+
+    def tobytes(self) -> bytes:
+        """Transform stream to bytes (will copy)"""
+        return self.read().tobytes()
+
+    @classmethod
+    def frombytes(cls, b: abc.Buffer) -> Stream:
+        """Construct a stream from bytes"""
+        stream = cls()
+        stream.write(b)
+        return stream
+
+    def __bytes__(self) -> bytes:
+        """Transform stream to bytes (will copy)"""
+        return self.tobytes()
 
     def __copy__(self) -> Stream:
         """Shallow copy of stream"""
@@ -416,14 +432,12 @@ class PickleSerializer:
 class BytesSerializer:
     """Bytes-stream serializer"""
 
-    __slots__ = ("_dump", "_load")
+    __slots__ = ()
 
     def dump(self, data: bytes) -> Stream:
         """Transform a data into a stream"""
-        stream = Stream()
-        stream.write(data)
-        return stream
+        return Stream.frombytes(data)
 
     def load(self, data: Stream) -> bytes:
         """Transform a stream into useful data"""
-        return data.read().tobytes()
+        return data.tobytes()

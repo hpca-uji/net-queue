@@ -439,6 +439,9 @@ class Communicator[T](abc.ABC):
         """
         Get data from peers
 
+        Always block.
+        Returns a message or raises ResourceClosed.
+        Once closed it continues working until exhausted then it raises ResourceClosed.
         If no peers are defined, data is returned from the first available peer.
 
         Note: Currently peers can not be specified.
