@@ -6,6 +6,7 @@ import abc
 import uuid
 import enum
 import typing
+import warnings
 import importlib
 import threading
 import dataclasses
@@ -108,7 +109,8 @@ class ConnectionOptions:
 @dataclass(order=False, slots=True, frozen=True)
 class SerializationOptions:
     """Serialization options"""
-    max_size: int = -1
+    queue_size: int = -1
+    message_size: int = -1
     load: col_abc.Callable[[Stream], typing.Any] = PickleSerializer().load
     dump: col_abc.Callable[[typing.Any], Stream] = PickleSerializer().dump
 
@@ -162,7 +164,7 @@ class SessionData:
 
     def get(self) -> Stream:
         """Unpack from get buffer"""
-        return self._packer.unpack(self.get_buffer, self._options.serialization.max_size)
+        return self._packer.unpack(self.get_buffer, self._options.serialization.message_size)
 
     def put(self, stream: Stream) -> Future[None]:
         """Push stream to put queue"""
@@ -300,7 +302,7 @@ class Communicator[T](abc.ABC):
         """Send session ini message"""
         state = self._states[peer]
         if ConnectionState.WRITABLE in state.state:
-            raise RuntimeError("Sending session ini on writable stream")
+            warnings.warn("Sending session ini on writable stream", RuntimeWarning)
         state.state |= ConnectionState.WRITABLE
         stream = Stream()
         stream.write(self.id.bytes)
@@ -310,7 +312,7 @@ class Communicator[T](abc.ABC):
         """Send session fin message"""
         state = self._states[peer]
         if ConnectionState.WRITABLE not in state.state:
-            raise RuntimeError("Sending session fin on unwritable stream")
+            warnings.warn("Sending session fin on unwritable stream", RuntimeWarning)
         state.state &= ~ConnectionState.WRITABLE
         stream = Stream()
         self._put(stream, peer)
@@ -319,13 +321,14 @@ class Communicator[T](abc.ABC):
         """Handle session initialize message"""
         state = self._states[peer]
         if ConnectionState.READABLE in state.state:
-            raise RuntimeError("Recived session ini on readable stream")
+            warnings.warn("Recived session ini on readable stream", RuntimeWarning)
 
         comm = self._comms[peer]
 
         # Set peer in state
         if stream.nbytes != len(self.id.bytes):
-            raise RuntimeError(f"Ini handshake message corrupted (got: {stream.nbytes} bytes)")
+            warnings.warn(f"Ini handshake message corrupted (got: {stream.nbytes} bytes)", RuntimeWarning)
+            return
         id = uuid.UUID(bytes=stream.read().tobytes())
 
         state.peer = id
@@ -348,15 +351,17 @@ class Communicator[T](abc.ABC):
         """Handle session finalize message"""
         state = self._states[peer]
         if ConnectionState.READABLE not in state.state:
-            raise RuntimeError("Recived session fin on unreadable stream")
+            warnings.warn("Recived session fin on unreadable stream", RuntimeWarning)
         if stream.nbytes != 0:
-            raise RuntimeError(f"Fin handshake message corrupted (got: {stream.nbytes} bytes)")
+            warnings.warn(f"Fin handshake message corrupted (got: {stream.nbytes} bytes)", RuntimeWarning)
+            return
         stream.close()
         state.state &= ~ConnectionState.READABLE
 
     def _process_gets(self, peer: uuid.UUID) -> None:
         """Handle pending get packets"""
         state = self._states[peer]
+        queue_size = self.options.serialization.queue_size
 
         for stream in state.get_flush_buffer():
             if stream.empty():
@@ -366,9 +371,12 @@ class Communicator[T](abc.ABC):
                 self._handle_session_ini(peer, stream)
                 peer = state.peer
 
-            else:
+            elif queue_size < 0 or state.get_queue.qsize() < queue_size:
                 state.get_queue.put(stream)
                 self._get_events.put(peer)
+
+            else:
+                warnings.warn(f"Dropping data for {peer} (queue full)")
 
     def _put_commit(self, peer: uuid.UUID, size: int) -> None:
         """Commit size bytes as transmitted and resolve callbacks"""

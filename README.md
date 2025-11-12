@@ -102,9 +102,13 @@ pip install -e .
 
   Serialization options
 
-  - `max_size: int = -1` (unlimited)
+  - `message_size: int = -1` (unlimited)
 
-    Maximun serialization size before attempting deserialization.
+    Maximun message size to deserialize before attempting splitting.
+
+  - `queue_size: int = -1` (unlimited)
+
+    Maximun queued up messages before dropping incoming messages.
 
   - `load: Callable[[Stream], Any] = PickleSerializer().load`
 
@@ -289,6 +293,8 @@ pip install -e .
     Example: `["builtins"]` for a whole module
 
     Example: `["uuid.UUID"]` for a single class
+
+    *Note*: Some builtins may be implicitly allowed due to optimizations.
 
   ---
 
