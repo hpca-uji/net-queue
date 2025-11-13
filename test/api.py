@@ -20,7 +20,7 @@ class Mode(enum.StrEnum):
 
 
 # Argument pasrser
-parser = ArgumentParser(prog="test_comms_api", description="Communications API test")
+parser = ArgumentParser(prog="nq-test-api", description="net-queue API test")
 parser.add_argument("proto", choices=list(nq.Protocol))
 parser.add_argument("mode", choices=list(Mode))
 parser.add_argument("--start-delay", type=float, default=3.0)

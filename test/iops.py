@@ -26,7 +26,7 @@ class Mode(enum.StrEnum):
 
 
 # Argument pasrser
-parser = ArgumentParser(prog="test_comms_iops", description="Communications IOPS test")
+parser = ArgumentParser(prog="nq-test-iops", description="net-queue IOPS test")
 parser.add_argument("proto", choices=list(nq.Protocol))
 parser.add_argument("peer", choices=list(Peer))
 parser.add_argument("mode", choices=list(Mode))
