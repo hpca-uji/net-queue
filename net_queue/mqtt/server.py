@@ -13,7 +13,7 @@ from net_queue import CommunicatorOptions
 
 
 __all__ = (
-    "Server",
+    "Communicator",
 )
 
 
@@ -21,7 +21,7 @@ __all__ = (
 END_COMM = b""
 
 
-class Server(Protocol, server.Server[str]):
+class Communicator(Protocol, server.Server[str]):
     """MQTT server"""
 
     def __init__(self, options: CommunicatorOptions = CommunicatorOptions()) -> None:
