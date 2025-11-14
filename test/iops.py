@@ -32,8 +32,8 @@ parser.add_argument("peer", choices=list(Peer))
 parser.add_argument("mode", choices=list(Mode))
 parser.add_argument("--start-delay", type=float, default=3.0)
 parser.add_argument("--delay", type=float, default=0.0)
-parser.add_argument("--size", type=int, default=1_000)
-parser.add_argument("--reps", type=int, default=1_000_000)
+parser.add_argument("--size", type=int, default=2 * 1024 ** 2)
+parser.add_argument("--reps", type=int, default=4 * 1000)
 parser.add_argument("--clients", type=int, default=1)
 
 
