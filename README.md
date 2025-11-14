@@ -25,13 +25,13 @@ with nq.new(purpose=nq.Purpose.CLIENT) as queue:
 |-|-|
 | OS | Debian GNU/Linux 13 (trixie) |
 | CPU | 13th Gen Intel® Core™ i5-13400 × 16 |
-| RAM | 64 GiB |
+| RAM | 64 GB |
 
 | Test | Transfer | Operations | Executed |
 |-|-|-|-|
-| Sequential | 16 GiB | 8 K | python test/iops.py proto peer sequential --size 2000000 --reps 4000 |
-| Random | 16 GiB | 8 K | python test/iops.py proto peer random --size 2000000 --reps 4000 |
-| Mix | 8.59 GiB | 8.19 K | python test/mix.py proto peer --min-size 8 --step-size 2 --max-size 32 --reps-expo 0.5 |
+| Sequential | 16 GB | 8 K | python test/iops.py proto peer sequential --size 2_000_000 --reps 4_000 |
+| Random | 16 GB | 8 K | python test/iops.py proto peer random --size 2_000_000 --reps 4_000 |
+| Mix | 8.59 GB | 8.19 K | python test/mix.py proto peer --min-size 8 --step-size 2 --max-size 32 --reps-expo 0.5 |
 
 | Time | TCP | MQTT | gRPC |
 |-|-|-|-|
@@ -45,18 +45,17 @@ with nq.new(purpose=nq.Purpose.CLIENT) as queue:
 | Random | 15.35 Gbps | 4.54 Gbps | 6.49 Gbps |
 | Mix | 5.32 Gbps | 2.83 Gbps | 3.16 Gbps |
 
-| IOPS | TCP | MQTT | gRPC |
+| Operations | TCP | MQTT | gRPC |
 |-|-|-|-|
 | Sequential | 1680.00 IOPS | 235.86 IOPS | 355.01 IOPS |
 | Random | 959.67 IOPS | 284.03IOPS | 405.82 IOPS |
 | Mix | 634.0 IOPS | 337.72 IOPS | 376.89 IOPS |
 
-
 | Memory | TCP | MQTT | gRPC |
 |-|-|-|-|
-| Sequential | 21.05 MiB | 28.39 MiB | 6552.81 MiB |
-| Random | 35.1 MiB | 45.27 MiB | 4956.03 MiB |
-| Mix | 8244.15 MiB | 8248.76 MiB | 10208.71 MiB |
+| Sequential | 21.05 MB | 28.39 MB | 6552.81 MB |
+| Random | 35.1 MB | 45.27 MB | 4956.03 MB |
+| Mix | 8244.15 MB | 8248.76 MB | 10208.71 MB |
 
 ## Install
 ### Production
