@@ -20,6 +20,44 @@ with nq.new(purpose=nq.Purpose.CLIENT) as queue:
     message = queue.get()
 ```
 
+## Benchmark
+| Configuration | Used |
+|-|-|
+| OS | Debian GNU/Linux 13 (trixie) |
+| CPU | 13th Gen Intel® Core™ i5-13400 × 16 |
+| RAM | 64 GiB |
+
+| Test | Transfer | Operations | Executed |
+|-|-|-|-|
+| Sequential | 16 GiB | 8 K | python test/iops.py proto peer sequential --size 2000000 --reps 4000 |
+| Random | 16 GiB | 8 K | python test/iops.py proto peer random --size 2000000 --reps 4000 |
+| Mix | 8.59 GiB | 8.19 K | python test/mix.py proto peer --min-size 8 --step-size 2 --max-size 32 --reps-expo 0.5 |
+
+| Time | TCP | MQTT | gRPC |
+|-|-|-|-|
+| Sequential | 4.8 s | 33.9 s | 22.5 s |
+| Random | 8.3 s | 28.2 s | 19.7 s |
+| Mix | 12.9 s | 24.3 s | 21.7 s |
+
+| Transfer | TCP | MQTT | gRPC |
+|-|-|-|-|
+| Sequential | 26.87 Gbps | 3.77 Gbps | 5.68 Gbps |
+| Random | 15.35 Gbps | 4.54 Gbps | 6.49 Gbps |
+| Mix | 5.32 Gbps | 2.83 Gbps | 3.16 Gbps |
+
+| IOPS | TCP | MQTT | gRPC |
+|-|-|-|-|
+| Sequential | 1680.00 IOPS | 235.86 IOPS | 355.01 IOPS |
+| Random | 959.67 IOPS | 284.03IOPS | 405.82 IOPS |
+| Mix | 634.0 IOPS | 337.72 IOPS | 376.89 IOPS |
+
+
+| Memory | TCP | MQTT | gRPC |
+|-|-|-|-|
+| Sequential | 21.05 MiB | 28.39 MiB | 6552.81 MiB |
+| Random | 35.1 MiB | 45.27 MiB | 4956.03 MiB |
+| Mix | 8244.15 MiB | 8248.76 MiB | 10208.71 MiB |
+
 ## Install
 ### Production
 ```bash
