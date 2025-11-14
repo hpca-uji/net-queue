@@ -27,6 +27,11 @@ dependencies = [
     "paho-mqtt>=2.1.0"
 ]
 
+[project.optional-dependencies]
+test = [
+    "numpy>=1.19.4"
+]
+
 [build-system]
 requires = [
     "setuptools>=68.2.0"
