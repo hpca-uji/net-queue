@@ -1,13 +1,16 @@
 """Communications mix IOPS test"""
 
+import math
 import sys
 import time
 import enum
 import random
-from pydtnn import utils
 from threading import Thread
-import net_queue as nq
 from argparse import ArgumentParser, Namespace
+
+import numpy
+
+import net_queue as nq
 
 
 __all__ = ()
@@ -48,20 +51,33 @@ def put(comm: nq.Communicator, msgs: list[bytearray]):
     print(i)
 
 
+def convert_size(units: int, scale: int = 1000):
+    """Convert unit to use SI suffixes"""
+    size_name = ("", "K", "M", "G", "T", "P", "E", "Z", "Y")
+    if units > 0:
+        i = int(math.log(units, scale))
+        p = math.pow(scale, i)
+        s = round(units / p, 2)
+    else:
+        i = 0
+        s = 0
+    return f"{s}{size_name[i]}"
+
+
 def print_stats(config: Namespace, sizes: list[int], time: float) -> None:
     """Print statistics"""
     ops = len(sizes)
     size = sum(sizes)
     print(f"Time:       {time:.1f}s")
-    print(f"Data:       {utils.convert_size(len(sizes))} @ {utils.convert_size(size)}B")
-    print(f"Transfer:   {utils.convert_size(size)}B @ {utils.convert_size(size * 8 / time):>5}bps")  # type: ignore
-    print(f"Operations: {utils.convert_size(ops)} @ {utils.convert_size(ops / time)}IOPS")  # type: ignore
+    print(f"Data:       {convert_size(len(sizes))} @ {convert_size(size)}B")
+    print(f"Transfer:   {convert_size(size)}B @ {convert_size(size * 8 / time):>5}bps")  # type: ignore
+    print(f"Operations: {convert_size(ops)} @ {convert_size(ops / time)}IOPS")  # type: ignore
 
 
 def server(config: Namespace):
     """Server peer"""
     messages = []
-    buffer = bytearray(2 ** config.max_size)
+    buffer = numpy.arange(2 ** config.max_size, dtype=numpy.uint8)
     for i in range(config.min_size, config.max_size, config.step_size):
         splits = round(((2 ** config.max_size) / (2 ** i)) ** config.reps_expo)
         for j in range(splits):
@@ -69,12 +85,16 @@ def server(config: Namespace):
     messages.append(buffer)
     random.shuffle(messages)
 
+    from pydtnn.utils.profiler import MemoryProfiler
+    profiler = MemoryProfiler()
+
     with nq.new(protocol=config.proto, purpose=nq.Purpose.SERVER) as server:
         get_thread = Thread(target=get, args=(server, messages * config.clients))
         put_thread = Thread(target=put, args=(server, messages))
         for _ in range(config.clients):
             server.get()
         server.put(None)
+        profiler.start()
         start_time = time.time()
 
         get_thread.start()
@@ -83,8 +103,10 @@ def server(config: Namespace):
         put_thread.join()
 
     end_time = time.time()
+    profiler.stop()
 
     print_stats(config=config, sizes=list(map(len, messages)) * config.clients, time=end_time - start_time)
+    print(profiler.events)
 
 
 def client(config: Namespace):

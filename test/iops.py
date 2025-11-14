@@ -1,13 +1,15 @@
 """Communications IOPS test"""
 
+import math
 import sys
 import time
 import enum
-import numpy
 from threading import Thread
-from pydtnn import utils
-import net_queue as nq
 from argparse import ArgumentParser, Namespace
+
+import numpy
+
+import net_queue as nq
 
 
 __all__ = ()
@@ -57,14 +59,27 @@ def put(comm: nq.Communicator, msg: numpy.ndarray, reps: int):
     return msg
 
 
+def convert_size(units: int, scale: int = 1000):
+    """Convert unit to use SI suffixes"""
+    size_name = ("", "K", "M", "G", "T", "P", "E", "Z", "Y")
+    if units > 0:
+        i = int(math.log(units, scale))
+        p = math.pow(scale, i)
+        s = round(units / p, 2)
+    else:
+        i = 0
+        s = 0
+    return f"{s}{size_name[i]}"
+
+
 def print_stats(config: Namespace, time: float) -> None:
     """Print statistics"""
     ops = config.reps * 2
     size = config.size * ops
     print(f"Time:       {time:.1f}s")
-    print(f"Data:       {utils.convert_size(config.reps)} x {utils.convert_size(config.size)}B")
-    print(f"Transfer:   {utils.convert_size(size)}B @ {utils.convert_size(size * 8 / time):>5}bps")
-    print(f"Operations: {utils.convert_size(ops)} @ {utils.convert_size(ops / time)}IOPS")
+    print(f"Data:       {convert_size(config.reps)} x {convert_size(config.size)}B")
+    print(f"Transfer:   {convert_size(size)}B @ {convert_size(size * 8 / time):>5}bps")
+    print(f"Operations: {convert_size(ops)} @ {convert_size(ops / time)}IOPS")
 
 
 def server(config: Namespace):
