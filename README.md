@@ -29,9 +29,9 @@ with nq.new(purpose=nq.Purpose.CLIENT) as queue:
 
 | Test | Transfer | Operations | Executed |
 |-|-|-|-|
-| Sequential | 16 GB | 8 K | python test/iops.py proto peer sequential --size 2_000_000 --reps 4_000 |
-| Random | 16 GB | 8 K | python test/iops.py proto peer random --size 2_000_000 --reps 4_000 |
-| Mix | 8.59 GB | 8.19 K | python test/mix.py proto peer --min-size 8 --step-size 2 --max-size 32 --reps-expo 0.5 |
+| Sync | 16 GB | 8 K | python test/iops.py proto peer sync --step-size 0 --max-size 21 --reps 4_000 |
+| Async | 16 GB | 8 K | python test/iops.py proto peer async --step-size 0 --max-size 21 --reps 4_000 |
+| Mix | 8.59 GB | 8.19 K | python test/iops.py proto peer async --min-size 8 --step-size 2 --step-expo 0.5 --max-size 32 |
 
 | Time | TCP | MQTT | gRPC |
 |-|-|-|-|

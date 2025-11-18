@@ -74,9 +74,9 @@ def convert_size(units: float, scale: int = 1000):
 
 def print_stats(sizes: list[int], time: float) -> None:
     """Print statistics"""
-    ops = len(sizes)
-    size = sum(sizes)
-    avg = size / ops
+    ops = len(sizes) * 2
+    size = sum(sizes) * 2
+    avg = sum(sizes) / len(sizes)
     print(f"Time:       {time:.1f}s")
     print(f"Data:       {convert_size(len(sizes))} @ {convert_size(avg)}B")
     print(f"Transfer:   {convert_size(size)}B @ {convert_size(size * 8 / time):>5}bps")  # type: ignore
@@ -101,6 +101,7 @@ def generate(config: Namespace) -> list[numpy.ndarray]:
 def server(config: Namespace):
     """Server peer"""
     messages = generate(config)
+    sizes = list(map(len, messages)) * config.clients
 
     with nq.new(protocol=config.proto, purpose=nq.Purpose.SERVER) as server:
         get_thread = Thread(target=get, args=(server, messages * config.clients))
@@ -124,12 +125,13 @@ def server(config: Namespace):
 
     end_time = time.time()
 
-    print_stats(sizes=list(map(len, messages)) * config.clients, time=end_time - start_time)
+    print_stats(sizes=sizes, time=end_time - start_time)
 
 
 def client(config: Namespace):
     """Client peer"""
     messages = generate(config)
+    sizes = list(map(len, messages)) * config.clients
 
     time.sleep(config.start_delay)
     with nq.new(protocol=config.proto, purpose=nq.Purpose.CLIENT) as client:
@@ -153,7 +155,7 @@ def client(config: Namespace):
 
     end_time = time.time()
 
-    print_stats(sizes=list(map(len, messages)), time=end_time - start_time)
+    print_stats(sizes=sizes, time=end_time - start_time)
 
 
 def main(config: Namespace):
