@@ -78,7 +78,7 @@ def print_stats(sizes: list[int], time: float) -> None:
     size = sum(sizes)
     avg = size / ops
     print(f"Time:       {time:.1f}s")
-    print(f"Data:       {convert_size(len(sizes))} ~ {convert_size(avg)}B")
+    print(f"Data:       {convert_size(len(sizes))} @ {convert_size(avg)}B")
     print(f"Transfer:   {convert_size(size)}B @ {convert_size(size * 8 / time):>5}bps")  # type: ignore
     print(f"Operations: {convert_size(ops)} @ {convert_size(ops / time)}IOPS")  # type: ignore
 
