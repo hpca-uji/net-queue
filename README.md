@@ -29,33 +29,33 @@ with nq.new(purpose=nq.Purpose.CLIENT) as queue:
 
 | Test | Transfer | Operations | Executed |
 |-|-|-|-|
-| Sync | 16 GB | 8 K | python test/iops.py proto peer sync --step-size 0 --max-size 21 --reps 4_000 |
-| Async | 16 GB | 8 K | python test/iops.py proto peer async --step-size 0 --max-size 21 --reps 4_000 |
+| Sync | 16.78 GB | 8.0 K | python test/iops.py proto peer sync --step-size 0 --max-size 21 --reps 4_000 |
+| Async | 16.78 GB | 8.0 K | python test/iops.py proto peer async --step-size 0 --max-size 21 --reps 4_000 |
 | Mix | 8.59 GB | 8.19 K | python test/iops.py proto peer async --min-size 8 --step-size 2 --step-expo 0.5 --max-size 32 |
 
 | Time | TCP | MQTT | gRPC |
 |-|-|-|-|
-| Sequential | 4.8 s | 33.9 s | 22.5 s |
-| Random | 8.3 s | 28.2 s | 19.7 s |
-| Mix | 12.9 s | 24.3 s | 21.7 s |
+| Sync | 5.3 s | 36.2 s | 23.1 s |
+| Async | 8.5 s | 27.0 s | 20.9 s |
+| Mix | 9.2 s | 23.8 s | 20.2 s |
 
 | Transfer | TCP | MQTT | gRPC |
 |-|-|-|-|
-| Sequential | 26.87 Gbps | 3.77 Gbps | 5.68 Gbps |
-| Random | 15.35 Gbps | 4.54 Gbps | 6.49 Gbps |
-| Mix | 5.32 Gbps | 2.83 Gbps | 3.16 Gbps |
+| Sync | 25.24 Gbps | 3.71 Gbps | 5.81 Gbps |
+| Async | 15.77 Gbps | 4.98 Gbps | 6.43 Gbps |
+| Mix | 14.91 Gbps | 5.78 Gbps | 6.79 Gbps |
 
 | Operations | TCP | MQTT | gRPC |
 |-|-|-|-|
-| Sequential | 1680.00 IOPS | 235.86 IOPS | 355.01 IOPS |
-| Random | 959.67 IOPS | 284.03IOPS | 405.82 IOPS |
-| Mix | 634.0 IOPS | 337.72 IOPS | 376.89 IOPS |
+| Sync | 1500.00 IOPS | 220.85 IOPS | 346.37 IOPS |
+| Async | 939.73 IOPS | 296.78 IOPS | 383.04 IOPS |
+| Mix | 1780.00 KIOPS | 689.41 IOPS | 809.01 IOPS |
 
 | Memory | TCP | MQTT | gRPC |
 |-|-|-|-|
-| Sequential | 21.05 MB | 28.39 MB | 6552.81 MB |
-| Random | 35.1 MB | 45.27 MB | 4956.03 MB |
-| Mix | 8244.15 MB | 8248.76 MB | 10208.71 MB |
+| Sync | 21.94 MB | 8377.33 MB | 30.68 MB |
+| Async | 33.39 MB | 7585.78 MB | 41.46 MB |
+| Mix | 8639.32 MB | 10481.62 MB | 8642.59 MB |
 
 ## Install
 ### Production
