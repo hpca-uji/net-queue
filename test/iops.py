@@ -87,10 +87,11 @@ def generate(config: Namespace) -> list[numpy.ndarray]:
     """Generate messages"""
     messages = []
     buffer = numpy.arange(2 ** config.max_size, dtype=numpy.uint8)
-    for i in range(config.min_size, config.max_size, config.step_size):
-        splits = round(((2 ** config.max_size) / (2 ** i)) ** config.step_expo)
-        for j in range(splits):
-            messages.append(buffer[:2 ** i])
+    if config.step_size:
+        for i in range(config.min_size, config.max_size, config.step_size):
+            splits = round(((2 ** config.max_size) / (2 ** i)) ** config.step_expo)
+            for j in range(splits):
+                messages.append(buffer[:2 ** i])
     messages.append(buffer)
     messages *= config.reps
     random.shuffle(messages)
