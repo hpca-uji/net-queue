@@ -24,8 +24,8 @@ class Peer(enum.StrEnum):
 
 class Mode(enum.StrEnum):
     """Test mode"""
-    SEQUENTIAL = enum.auto()
-    RANDOM = enum.auto()
+    SYNC = enum.auto()
+    ASYNC = enum.auto()
 
 
 # Argument pasrser
@@ -110,12 +110,12 @@ def server(config: Namespace):
         start_time = time.time()
 
         match config.mode:
-            case Mode.SEQUENTIAL:
+            case Mode.SYNC:
                 time.sleep(config.delay)
                 get_thread.run()
                 put_thread.run()
 
-            case Mode.RANDOM:
+            case Mode.ASYNC:
                 get_thread.start()
                 put_thread.start()
                 get_thread.join()
@@ -139,12 +139,12 @@ def client(config: Namespace):
         start_time = time.time()
 
         match config.mode:
-            case Mode.SEQUENTIAL:
+            case Mode.SYNC:
                 put_thread.run()
                 time.sleep(config.delay)
                 get_thread.run()
 
-            case Mode.RANDOM:
+            case Mode.ASYNC:
                 get_thread.start()
                 put_thread.start()
                 get_thread.join()
