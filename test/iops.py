@@ -139,7 +139,7 @@ def client(config: Namespace):
         put_thread = Thread(target=put, args=(client, messages))
         client.put(None)
         client.get()
-        start_time = time.time()
+        start_time = time.perf_counter()
 
         match config.mode:
             case Mode.SYNC:
@@ -153,7 +153,7 @@ def client(config: Namespace):
                 get_thread.join()
                 put_thread.join()
 
-    end_time = time.time()
+    end_time = time.perf_counter()
 
     print_stats(sizes=sizes, time=end_time - start_time)
 
