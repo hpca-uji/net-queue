@@ -187,7 +187,7 @@ class SessionData:
         """Merge get buffer"""
         with Stream() as stream:
 
-            while not self.get_buffer.empty() and stream.nbytes < self._options.connection.merge_size:
+            while not self.get_buffer.empty():
                 chunk = self.get_buffer.unwritechunk()
 
                 if len(chunk) >= self._merge_size:
@@ -196,11 +196,13 @@ class SessionData:
 
                 stream.unreadchunk(chunk)
 
-            if stream.nbytes >= self._merge_size:
-                chunk = stream.read()
-                self.get_buffer.writechunk(chunk)
-            else:
+            if stream.nbytes < self._merge_size:
                 self.get_buffer.writechunks(stream.readchunks())
+                return
+
+            while not stream.empty():
+                chunk = stream.read(self._options.connection.merge_size)
+                self.get_buffer.writechunk(chunk)
 
     def get_flush_buffer(self) -> col_abc.Iterable[Stream]:
         """Flush get buffer"""
