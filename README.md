@@ -49,7 +49,7 @@ with nq.new(purpose=nq.Purpose.CLIENT) as queue:
 |-|-|-|-|
 | Sync | 1500.00 IOPS | 220.85 IOPS | 346.37 IOPS |
 | Async | 939.73 IOPS | 296.78 IOPS | 383.04 IOPS |
-| Mix | 1780.00 KIOPS | 689.41 IOPS | 809.01 IOPS |
+| Mix | 1780.00 IOPS | 689.41 IOPS | 809.01 IOPS |
 
 | Memory | TCP | MQTT | gRPC |
 |-|-|-|-|
