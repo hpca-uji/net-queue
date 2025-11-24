@@ -243,7 +243,7 @@ class SessionData:
 
     def put_flush_queue(self) -> None:
         """Flush put queue"""
-        while self.put_buffer.nbytes < self._options.connection.max_size:
+        while True:
             try:
                 stream = self.put_queue.get_nowait()
             except Empty:
