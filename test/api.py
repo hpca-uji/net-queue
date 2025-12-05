@@ -35,15 +35,15 @@ def server(config: Namespace):
 
     for _ in range(config.size):
         client_msg = server.get()
-        print(f"{server}-c2s: {client_msg}")
+        print(f"{server.id}-c2s: {client_msg}")
         clients.add(client_msg.peer)
 
-    print(f"{server}-s2c-global: {server_msg}")
-    future = server.put(data=server_msg)
+    print(f"{server.id}-s2c-global: {server_msg}")
+    future = server.put(server_msg)
     future.result()
 
     for client in clients:
-        print(f"{server}-s2c-local: {server_msg}")
+        print(f"{server.id}-s2c-local: {server_msg}")
         server.put(server_msg, client)
 
     server.close()
@@ -55,16 +55,16 @@ def client(config: Namespace):
     time.sleep(config.start_delay)
     client = nq.new(protocol=config.proto, purpose=nq.Purpose.CLIENT)
 
-    print(f"{client}-c2s: {client_msg}")
+    print(f"{client.id}-c2s: {client_msg}")
     future = client.put(client_msg)
     future.result()
 
     server_msg = client.get()
-    print(f"{client}-s2c-global: {server_msg}")
+    print(f"{client.id}-s2c-global: {server_msg}")
     assert client_msg == server_msg.data, "Corrupted message data"  # type: ignore
 
     server_msg = client.get()
-    print(f"{client}-s2c-local: {server_msg}")
+    print(f"{client.id}-s2c-local: {server_msg}")
     assert client_msg == server_msg.data, "Corrupted message data"
 
     client.close()

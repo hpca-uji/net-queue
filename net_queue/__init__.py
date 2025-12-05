@@ -1,6 +1,8 @@
 """Communications package"""
 
 # FIXME: session_ini/fin export future or surface error
+# FIXME: TCP / GRPC threading preformance
+# FIXME: TCP + TLS preformance
 
 import abc
 import uuid
@@ -317,21 +319,16 @@ class Communicator[T](abc.ABC):
             warnings.warn("Sending session fin on unwritable stream", RuntimeWarning)
         state.state &= ~ConnectionState.WRITABLE
         stream = Stream()
+        stream.write(self.id.bytes)
         self._put(stream, peer)
 
-    def _handle_session_ini(self, peer: uuid.UUID, stream: Stream) -> None:
+    def _handle_session_ini(self, peer: uuid.UUID, id: uuid.UUID) -> None:
         """Handle session initialize message"""
         state = self._states[peer]
         if ConnectionState.READABLE in state.state:
             warnings.warn("Recived session ini on readable stream", RuntimeWarning)
 
         comm = self._comms[peer]
-
-        # Set peer in state
-        if stream.nbytes != len(self.id.bytes):
-            warnings.warn(f"Ini handshake message corrupted (got: {stream.nbytes} bytes)", RuntimeWarning)
-            return
-        id = uuid.UUID(bytes=stream.read().tobytes())
 
         state.peer = id
         state.state |= ConnectionState.READABLE
@@ -349,34 +346,37 @@ class Communicator[T](abc.ABC):
             # Update communicator ID association
             self._comms.inverse[comm] = id
 
-    def _handle_session_fin(self, peer: uuid.UUID, stream: Stream) -> None:
+    def _handle_session_fin(self, peer: uuid.UUID, id: uuid.UUID) -> None:
         """Handle session finalize message"""
         state = self._states[peer]
         if ConnectionState.READABLE not in state.state:
             warnings.warn("Recived session fin on unreadable stream", RuntimeWarning)
-        if stream.nbytes != 0:
-            warnings.warn(f"Fin handshake message corrupted (got: {stream.nbytes} bytes)", RuntimeWarning)
-            return
-        stream.close()
         state.state &= ~ConnectionState.READABLE
 
     def _process_gets(self, peer: uuid.UUID) -> None:
         """Handle pending get packets"""
         state = self._states[peer]
+        id_size = len(self.id.bytes)
         queue_size = self.options.serialization.queue_size
 
         for stream in state.get_flush_buffer():
-            if stream.empty():
-                self._handle_session_fin(peer, stream)
+            if stream.nbytes == id_size:
+                chunk = stream.read()
+                id = uuid.UUID(bytes=chunk.tobytes())
 
-            elif state.peer == UUID_NIL:
-                self._handle_session_ini(peer, stream)
-                peer = state.peer
+                if state.peer == UUID_NIL:
+                    self._handle_session_ini(peer, id)
+                    peer = state.peer
+                    continue
+                elif state.peer == id:
+                    self._handle_session_fin(peer, id)
+                    continue
+                else:
+                    stream.writechunk(chunk)
 
-            elif queue_size < 0 or state.get_queue.qsize() < queue_size:
+            if queue_size < 0 or state.get_queue.qsize() < queue_size:
                 state.get_queue.put(stream)
                 self._get_events.put(peer)
-
             else:
                 warnings.warn(f"Dropping data for {peer} (queue full)")
 

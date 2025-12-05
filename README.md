@@ -371,8 +371,8 @@ Ini:
 
 Fin:
 - Server & client flushes message queue
-- Server & client sends empty message
-- Server & client wait for empty message
+- Server & client sends ID
+- Server & client wait for ID
 
 ### Communication persistency
 Ini:
