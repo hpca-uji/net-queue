@@ -43,7 +43,7 @@ class Communicator(Protocol[str], client.Client[str]):
         self._process_gets(peer)
         peer = state.peer
 
-        if not state.state and state.put_empty():
+        if not state.status and state.put_empty():
             self._connection_fin(comm)
 
     def _put(self, stream: Stream, peer: uuid.UUID) -> Future[None]:

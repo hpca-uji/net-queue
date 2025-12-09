@@ -86,7 +86,7 @@ class Communicator(Protocol[grpc.StreamStreamMultiCallable], client.Client[grpc.
             self._process_gets(peer)
             peer = state.peer
 
-        if not state.state and state.put_empty():
+        if not state.status and state.put_empty():
             self._connection_fin(comm)
 
     @staticmethod
@@ -148,7 +148,7 @@ class Communicator(Protocol[grpc.StreamStreamMultiCallable], client.Client[grpc.
         state = self._states[peer]
         self._session_fin(peer)
 
-        while state.state:
+        while state.status:
             self._pool.submit(self._s2c, comm).result()
 
         with self._lock:

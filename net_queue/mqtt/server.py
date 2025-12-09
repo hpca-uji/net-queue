@@ -69,7 +69,7 @@ class Communicator(Protocol, server.Server[str]):
                 size += len(view)
         self._put_commit(peer, size)
 
-        if not state.state and state.put_empty():
+        if not state.status and state.put_empty():
             self._connection_fin(comm)
 
     def _close(self) -> None:

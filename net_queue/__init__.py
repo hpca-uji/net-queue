@@ -37,13 +37,9 @@ __all__ = (
     "Message",
     "ResourceClosed",
     "Communicator",
-    "SessionData",
+    "Session",
     "new"
 )
-
-
-UUID_NIL = uuid.UUID(int=0)
-UUID_MAX = uuid.UUID(int=2 ** 128 - 1)
 
 
 class ResourceClosed(RuntimeError):
@@ -70,8 +66,8 @@ class Message[T]:
     data: T
 
 
-class ConnectionState(enum.Flag):
-    """Connection state"""
+class ConnectionStatus(enum.Flag):
+    """Connection status"""
     READABLE = enum.auto()
     WRITABLE = enum.auto()
 
@@ -135,14 +131,14 @@ class CommunicatorOptions:
     security: SecurityOptions | None = None
 
 
-class SessionData:
-    """Connection data"""
+class Session:
+    """Session data"""
 
     def __init__(self, options: CommunicatorOptions = CommunicatorOptions()) -> None:
-        """Initialize connection state"""
-        self.peer = UUID_NIL
+        """Initialize session data"""
+        self.peer = options.id
         self._options = options
-        self.state = ConnectionState(value=0)
+        self.status = ConnectionStatus(value=0)
 
         self._packer = Packer()
         self._merge_buffer = byteview(bytearray(self._options.connection.merge_size))
@@ -282,7 +278,7 @@ class Communicator[T](abc.ABC):
         self._get_events = SimpleQueue[uuid.UUID]()
 
         self._comms = bidict[uuid.UUID, T]()
-        self._states = dict[uuid.UUID, SessionData]()
+        self._states = dict[uuid.UUID, Session]()
 
         thread_prefix = f"{__name__}.{self.__class__.__qualname__}:{id(self)}"
 
@@ -298,40 +294,34 @@ class Communicator[T](abc.ABC):
         """Communicator identifier"""
         return self.options.id
 
-    def _new_session_data(self) -> SessionData:
-        """Generate new connection state data"""
-        return SessionData(options=self.options)
-
     def _session_ini(self, peer: uuid.UUID) -> None:
         """Send session ini message"""
         state = self._states[peer]
-        if ConnectionState.WRITABLE in state.state:
+        if ConnectionStatus.WRITABLE in state.status:
             warnings.warn("Sending session ini on writable stream", RuntimeWarning)
-        state.state |= ConnectionState.WRITABLE
-        stream = Stream()
-        stream.write(self.id.bytes)
+        state.status |= ConnectionStatus.WRITABLE
+        stream = Stream.frombytes(self.id.bytes)
         self._put(stream, peer)
 
     def _session_fin(self, peer: uuid.UUID) -> None:
         """Send session fin message"""
         state = self._states[peer]
-        if ConnectionState.WRITABLE not in state.state:
+        if ConnectionStatus.WRITABLE not in state.status:
             warnings.warn("Sending session fin on unwritable stream", RuntimeWarning)
-        state.state &= ~ConnectionState.WRITABLE
-        stream = Stream()
-        stream.write(self.id.bytes)
+        state.status &= ~ConnectionStatus.WRITABLE
+        stream = Stream.frombytes(self.id.bytes)
         self._put(stream, peer)
 
     def _handle_session_ini(self, peer: uuid.UUID, id: uuid.UUID) -> None:
         """Handle session initialize message"""
         state = self._states[peer]
-        if ConnectionState.READABLE in state.state:
+        if ConnectionStatus.READABLE in state.status:
             warnings.warn("Recived session ini on readable stream", RuntimeWarning)
 
         comm = self._comms[peer]
 
         state.peer = id
-        state.state |= ConnectionState.READABLE
+        state.status |= ConnectionStatus.READABLE
 
         with self._lock:
             # New ID, move state from tmp ID
@@ -349,9 +339,9 @@ class Communicator[T](abc.ABC):
     def _handle_session_fin(self, peer: uuid.UUID, id: uuid.UUID) -> None:
         """Handle session finalize message"""
         state = self._states[peer]
-        if ConnectionState.READABLE not in state.state:
+        if ConnectionStatus.READABLE not in state.status:
             warnings.warn("Recived session fin on unreadable stream", RuntimeWarning)
-        state.state &= ~ConnectionState.READABLE
+        state.status &= ~ConnectionStatus.READABLE
 
     def _process_gets(self, peer: uuid.UUID) -> None:
         """Handle pending get packets"""
@@ -360,20 +350,29 @@ class Communicator[T](abc.ABC):
         queue_size = self.options.serialization.queue_size
 
         for stream in state.get_flush_buffer():
+
+            # Handshake-like
             if stream.nbytes == id_size:
                 chunk = stream.read()
                 id = uuid.UUID(bytes=chunk.tobytes())
 
-                if state.peer == UUID_NIL:
+                # Handshake INI
+                if state.peer == self.id:
                     self._handle_session_ini(peer, id)
                     peer = state.peer
                     continue
+
+                # Handshake FIN
                 elif state.peer == id:
                     self._handle_session_fin(peer, id)
+                    peer = state.peer
                     continue
+
+                # Data (handshake-like)
                 else:
                     stream.writechunk(chunk)
 
+            # Queue limits
             if queue_size < 0 or state.get_queue.qsize() < queue_size:
                 state.get_queue.put(stream)
                 self._get_events.put(peer)
@@ -407,7 +406,7 @@ class Communicator[T](abc.ABC):
 
         with self._lock:
             self._comms[peer] = comm
-            self._states[peer] = self._new_session_data()
+            self._states[peer] = Session(self.options)
             self._connection_post_ini(peer)
 
             # ACK
@@ -426,7 +425,7 @@ class Communicator[T](abc.ABC):
 
             del self._comms[peer]
 
-            # TODO: reuse peer_cleanup
+            # TODO: reuse _session_cleanup
             if self._states[peer].get_empty():
                 del self._states[peer]
 
@@ -461,7 +460,7 @@ class Communicator[T](abc.ABC):
         peer = self._get(*peers)
 
         # Exit signaled
-        if peer == UUID_MAX:
+        if peer == self.id:
             raise ResourceClosed(self.id)
 
         state = self._states[peer]
@@ -529,7 +528,7 @@ class Communicator[T](abc.ABC):
         """Communicator finalizer"""
         # Unlock inflight external API:
         for _ in range(threading.active_count()):
-            self._get_events.put(UUID_MAX)
+            self._get_events.put(self.id)
         self._pool.shutdown()
         self._put_queue.shutdown()
 

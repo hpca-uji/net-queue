@@ -64,7 +64,7 @@ class Communicator(Protocol[socket.socket], server.Server[socket.socket]):
 
         self._notify_selector()
 
-        if not state.state and state.put_empty():
+        if not state.status and state.put_empty():
             self._connection_fin(comm)
 
     def _c2s(self, comm: socket.socket) -> None:
@@ -78,7 +78,7 @@ class Communicator(Protocol[socket.socket], server.Server[socket.socket]):
             return
 
         if not data:
-            if state.state or not state.put_queue.empty():
+            if state.status or not state.put_queue.empty():
                 warnings.warn(f"Lost connection unexpectedly ({comm})", RuntimeWarning)
             return
 
