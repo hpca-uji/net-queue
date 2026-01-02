@@ -404,13 +404,13 @@ Close
 - Server waits for peers to disconnect
 
 ### TCP
-Library: socket
-Parallelism: Thread pool (n+1+1 threads)
+Library: socket  
+Parallelism: Thread pool (n+1+1 threads)  
 
 ### MQTT
-Library: paho-mqtt
-Options: tcp transport, 0 QOS, 3.1.1 protocol
-Parallelism: Single threaded (1+1+1 threads)
+Library: paho-mqtt  
+Options: tcp transport, 0 QOS, 3.1.1 protocol  
+Parallelism: Single threaded (1+1+1 threads)  
 
 MQTT broker implementations are not common, so the server provided here is actually another client. Therefore the address and port provided to both, the client and server, should be the one of the actual broker, not where the server is running.
 
@@ -421,9 +421,9 @@ Peer-groups and global comunications are not optimized.
 First, chunked message ordering must be resolved. Single chunk order it is guaranteed by the protocol, even on with diferent topics. Second, peer-groups could be implemented using grouping requests that generate new UUID per group. This would reduce also reduce load on the broker.
 
 ### gRPC
-Library: grpcio
-Options: compresion disabled, protobuf disabled
-Parallelism: Thread pool (n+1+? threads)
+Library: grpcio  
+Options: compresion disabled, protobuf disabled  
+Parallelism: Thread pool (n+1+? threads)  
 
 gRPC does not conform well to a async send & async receive model, it expects remote procedure calls to be called, processed and responded. To simulate this model we created a bidirectional streaming procedure. Sent data is queued at the server, recived data is polled until available.
 
