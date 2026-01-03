@@ -235,7 +235,7 @@ pip install -e .
 
 - `{protocol}.{purpose}.Comunicator(options)`
 
-  Concrete communicator implementation fot the given protocol and purpose
+  Concrete communicator implementation for the given protocol and purpose
 
 - `stream.Stream()`
 
