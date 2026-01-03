@@ -433,7 +433,7 @@ Polling is implemented with a exponential backoff time and a limit. The gRPC lib
 
 It is important to not hold the prodedures indefinitely, since this could starve the server of threads. Additionaly, if a streaming direction was already closed, messages could end up queued forever if not restarted.
 
-To alleviate network latency queues are flushed unidirectionally in turns, insted of interleaving directions. However on hight throughout applications this could lead to a very bursty receive pattern.
+To alleviate network latency queues are flushed unidirectionally in turns, insted of interleaving directions. However on high throughput applications this could lead to a very bursty receive pattern.
 
 ## Planned
 Implement reconnection support. The protocol already has support for it, server support is done, clients can reconnect but can not yet disconnect without flushing.
