@@ -71,7 +71,7 @@ pip install -e .
 ```
 
 ## Documentation
-### Constatns
+### Constants
 - `Protocol`:
 
   Comunication protocol
