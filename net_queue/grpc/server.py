@@ -83,7 +83,7 @@ class Communicator(Protocol[str], server.Server[str]):
                 self._lock.wait()
 
         # Close resources
-        # Allow some time for RPC taredown
+        # Allow some time for RPC teardown
         self._server.stop(grace=0.5)
         self._pool.shutdown()
 

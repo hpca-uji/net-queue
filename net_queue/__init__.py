@@ -1,8 +1,8 @@
 """Communications package"""
 
 # FIXME: session_ini/fin export future or surface error
-# FIXME: TCP / GRPC threading preformance
-# FIXME: TCP + TLS preformance
+# FIXME: TCP / GRPC threading performance
+# FIXME: TCP + TLS performance
 
 import abc
 import uuid
@@ -47,14 +47,14 @@ class ResourceClosed(RuntimeError):
 
 
 class Protocol(enum.StrEnum):
-    """Comunication protocol"""
+    """Communication protocol"""
     GRPC = enum.auto()
     MQTT = enum.auto()
     TCP = enum.auto()
 
 
 class Purpose(enum.StrEnum):
-    """Comunication purpose"""
+    """Communication purpose"""
     SERVER = enum.auto()
     CLIENT = enum.auto()
 
@@ -87,28 +87,22 @@ class ConnectionOptions:
     """
     Connection options
 
-    There are no definite values, depends on: usecase, OS/stack/version and link specs.
-    Its recommended to test your configuration (or preferably set them dynamicly).
-    There are *ruls of thumb* but they serve as a baseline.
+    There are no definite values, depends on: use case, OS/stack/version and link specs.
+    Its recommended to test your configuration (or preferably set them dynamically).
+    There are *rules of thumb* but they serve as a baseline.
     """
 
-    max_size: int
-    merge_size: int
-    efficient_size: int
-
-    def __init__(self, max_size: int = 0, merge_size: int = 0, efficient_size: int = 0):
-        """Inizialize connection options"""
-        # NOTE: Frozen dataclasess must use object.__setattr__ during __init__
-        object.__setattr__(self, "max_size", max_size if max_size else 4 * 1024 ** 2)
-        object.__setattr__(self, "merge_size", merge_size if merge_size else self.max_size)
-        object.__setattr__(self, "efficient_size", efficient_size if efficient_size else self.max_size // 64)
+    get_merge: bool = True
+    put_merge: bool = True
+    efficient_size: int = 64 * 1024 ** 1
+    protocol_size: int = 4 * 1024 ** 2
+    queue_size: int = 1 * 1024 ** 3
+    message_size: int = 1 * 1024 ** 4
 
 
 @dataclass(order=False, slots=True, frozen=True)
 class SerializationOptions:
     """Serialization options"""
-    queue_size: int = -1
-    message_size: int = -1
     load: col_abc.Callable[[Stream], typing.Any] = PickleSerializer().load
     dump: col_abc.Callable[[typing.Any], Stream] = PickleSerializer().dump
 
@@ -122,13 +116,13 @@ class SecurityOptions:
 
 @dataclass(order=False, slots=True, frozen=True)
 class CommunicatorOptions:
-    """Comunicatior options"""
+    """Communicator options"""
     id: uuid.UUID = dataclasses.field(default_factory=uuid.uuid4)
     netloc: NetworkLocation = NetworkLocation()
-    workers: int = 1
     connection: ConnectionOptions = ConnectionOptions()
     serialization: SerializationOptions = SerializationOptions()
     security: SecurityOptions | None = None
+    workers: int = 1
 
 
 class Session:
@@ -136,91 +130,107 @@ class Session:
 
     def __init__(self, options: CommunicatorOptions = CommunicatorOptions()) -> None:
         """Initialize session data"""
-        self.peer = options.id
-        self._options = options
         self.status = ConnectionStatus(value=0)
+        self._options = options
+        self.peer = options.id
 
+        # Helpers
         self._packer = Packer()
-        self._merge_buffer = byteview(bytearray(self._options.connection.merge_size))
-        self._merge_size = min(self._options.connection.merge_size, self._options.connection.efficient_size)
-
-        self.put_queue = SimpleQueue[Stream]()
-        self.get_queue = SimpleQueue[Stream]()
-        self.put_buffer = Stream()
-        self.get_buffer = Stream()
 
         self._ack_queue = dict[Stream, Future]()
         self._ack_buffer = deque[tuple[int, Future]]()
 
+        # Get
+        self._get_queue = SimpleQueue[Stream]()
+        self._get_buffer: memoryview | None = None
+        self._get_size = 0
+        self._get_stream = Stream()
+
+        if not self._options.connection.get_merge:
+            self.get_optimize = lambda: None
+
+        # Put
+        self._put_queue = SimpleQueue[Stream]()
+        self._put_buffer = byteview(bytearray(self._options.connection.protocol_size))
+        self._put_size = min(self._options.connection.protocol_size, self._options.connection.efficient_size)
+        self._put_stream = Stream()
+
+        if not self._options.connection.put_merge:
+            self.put_optimize = lambda: None
+
     def get_empty(self) -> bool:
         """Is get connection flushed"""
-        return self.get_queue.empty() and self.get_buffer.empty()
+        return self._get_queue.empty() and self._get_stream.empty() and self._get_buffer is None
 
     def put_empty(self) -> bool:
         """Is put connection flushed"""
-        return self.put_queue.empty() and self.put_buffer.empty()
+        return self._put_queue.empty() and self._put_stream.empty()
 
     def get(self) -> Stream:
         """Unpack from get buffer"""
-        return self._packer.unpack(self.get_buffer, self._options.serialization.message_size)
+        return self._packer.unpack(self._get_stream, self._options.connection.message_size)
 
     def put(self, stream: Stream) -> Future[None]:
         """Push stream to put queue"""
         future = Future[None]()
         asynctools.future_set_running(future)
         self._ack_queue[stream] = future
-        self.put_queue.put(stream)
+        self._put_queue.put(stream)
         return future
 
     def get_write(self, b: col_abc.Buffer) -> int:
-        """Write get buffer (merging chunks if plausible)"""
-        size = self.get_buffer.write(b)
-
-        if self.get_buffer.nchunks > 1 and size < self._merge_size:
-            self._get_merge()
-
+        """Write get buffer"""
+        size = self._get_stream.write(b)
+        self.get_optimize()
         return size
 
-    def _get_merge(self) -> None:
-        """Merge get buffer"""
-        with Stream() as stream:
-
-            while not self.get_buffer.empty():
-                chunk = self.get_buffer.unwritechunk()
-
-                if len(chunk) >= self._merge_size:
-                    self.get_buffer.writechunk(chunk)
-                    break
-
-                stream.unreadchunk(chunk)
-
-            if stream.nbytes < self._merge_size:
-                self.get_buffer.writechunks(stream.readchunks())
-                return
-
-            while not stream.empty():
-                chunk = stream.read(self._options.connection.merge_size)
-                self.get_buffer.writechunk(chunk)
-
-    def get_flush_buffer(self) -> col_abc.Iterable[Stream]:
-        """Flush get buffer"""
-        try:
-            while True:
-                yield self.get()
-        except BlockingIOError:
-            pass
-
-    def _put_merge(self) -> None:
-        """Merge put buffer"""
-        merge_size = self.put_buffer.readinto(self._merge_buffer)
-        self.put_buffer.unreadchunk(self._merge_buffer[:merge_size])
-
     def put_read(self) -> memoryview:
-        """Read put buffer (merging chunks if plausible)"""
-        if self.put_buffer.nchunks > 1 and len(self.put_buffer.peekchunk()) < self._merge_size:
-            self._put_merge()
+        """Read put buffer"""
+        self.put_optimize()
+        b = self._put_stream.read1(self._options.connection.protocol_size)
+        return b
 
-        return self.put_buffer.read1(self._options.connection.max_size)
+    def get_optimize(self) -> None:
+        """Optimize get buffer"""
+
+        # Generate buffer
+        if self._get_buffer is None and not self._get_stream.empty():
+            try:
+                size = self._packer.unpack_header(self._get_stream)
+            except BlockingIOError:
+                pass
+            else:
+                self._get_size = size
+                size = min(size, self._options.connection.message_size)
+                if len(self._get_stream.peekchunk()) >= size:
+                    size = 0
+                self._get_buffer = byteview(bytearray(size))
+
+        # Transfer to buffer
+        if self._get_buffer is not None and not self._get_stream.empty() and len(self._get_buffer) > 0:
+            size = self._get_stream.readinto(self._get_buffer)
+            with self._get_buffer:
+                self._get_buffer = self._get_buffer[size:]
+
+        # Buffer full
+        if self._get_buffer is not None and not len(self._get_buffer) > 0:
+            with Stream() as stream:
+                with self._get_buffer:
+                    self._packer.pack_header(stream, self._get_size)
+                    stream.write(self._get_buffer.obj)
+                    self._get_buffer = None
+                chunks = list(stream.readchunks())
+
+            for chunk in reversed(chunks):
+                self._get_stream.unreadchunk(chunk)
+
+    def put_optimize(self) -> None:
+        """Optimize put buffer"""
+        if self._get_stream.nchunks <= 1 or len(self._get_stream.peekchunk()) >= self._put_size:
+            return
+
+        merge_size = self._put_stream.readinto(self._put_buffer)
+        self._put_stream.unreadchunk(self._put_buffer[:merge_size])
 
     def put_commit(self, size: int) -> col_abc.Iterable[Future[None]]:
         """Mark size's bytes as fully transmitted (or freeable)"""
@@ -230,7 +240,7 @@ class Session:
             pending -= shared
             size -= shared
 
-            assert size >= 0, "Commited more puts than queued"
+            assert size >= 0, "Committed more puts than queued"
 
             if pending > 0:
                 self._ack_buffer[0] = (pending, future)
@@ -239,22 +249,32 @@ class Session:
             self._ack_buffer.popleft()
             yield future
 
+    def get_flush_buffer(self) -> col_abc.Iterable[Stream]:
+        """Flush get buffer"""
+        try:
+            while True:
+                yield self.get()
+        except BlockingIOError:
+            pass
+
     def put_flush_queue(self) -> None:
         """Flush put queue"""
-        while True:
-            try:
-                stream = self.put_queue.get_nowait()
-            except Empty:
-                break
-            else:
+        try:
+            while True:
+                stream = self._put_queue.get_nowait()
                 future = self._ack_queue.pop(stream)
-                size = self._packer.pack(self.put_buffer, stream)
+                size = self._packer.pack(self._put_stream, stream)
                 self._ack_buffer.append((size, future))
+        except Empty:
+            pass
 
     def put_flush_buffer(self) -> col_abc.Iterable[memoryview]:
         """Flush put buffer"""
-        while not self.put_buffer.empty():
-            yield self.put_read()
+        try:
+            while True:
+                yield self.put_read()
+        except BlockingIOError:
+            pass
 
 
 class Communicator[T](abc.ABC):
@@ -263,7 +283,7 @@ class Communicator[T](abc.ABC):
 
     Operations are thread-safe.
 
-    Comunicator has `with` support.
+    Communicator has `with` support.
     """
 
     def __init__(self, options: CommunicatorOptions = CommunicatorOptions()) -> None:
@@ -282,11 +302,11 @@ class Communicator[T](abc.ABC):
 
         thread_prefix = f"{__name__}.{self.__class__.__qualname__}:{id(self)}"
 
-        self._pool = ThreadPoolExecutor(max_workers=self.options.workers, thread_name_prefix=f"{thread_prefix}.worker")
         self._put_queue = thread_queue(f"{thread_prefix}.put")
+        self._pool = ThreadPoolExecutor(max_workers=self.options.workers, thread_name_prefix=f"{thread_prefix}.worker")
 
     def __repr__(self) -> str:
-        """Comunicator representation"""
+        """Communicator representation"""
         return f"{self.__class__.__name__}(options={self.options!r})"
 
     @property
@@ -316,7 +336,7 @@ class Communicator[T](abc.ABC):
         """Handle session initialize message"""
         state = self._states[peer]
         if ConnectionStatus.READABLE in state.status:
-            warnings.warn("Recived session ini on readable stream", RuntimeWarning)
+            warnings.warn("Received session ini on readable stream", RuntimeWarning)
 
         comm = self._comms[peer]
 
@@ -340,14 +360,13 @@ class Communicator[T](abc.ABC):
         """Handle session finalize message"""
         state = self._states[peer]
         if ConnectionStatus.READABLE not in state.status:
-            warnings.warn("Recived session fin on unreadable stream", RuntimeWarning)
+            warnings.warn("Received session fin on unreadable stream", RuntimeWarning)
         state.status &= ~ConnectionStatus.READABLE
 
     def _process_gets(self, peer: uuid.UUID) -> None:
         """Handle pending get packets"""
         state = self._states[peer]
         id_size = len(self.id.bytes)
-        queue_size = self.options.serialization.queue_size
 
         for stream in state.get_flush_buffer():
 
@@ -373,8 +392,8 @@ class Communicator[T](abc.ABC):
                     stream.writechunk(chunk)
 
             # Queue limits
-            if queue_size < 0 or state.get_queue.qsize() < queue_size:
-                state.get_queue.put(stream)
+            if state._get_queue.qsize() < self.options.connection.queue_size:
+                state._get_queue.put(stream)
                 self._get_events.put(peer)
             else:
                 warnings.warn(f"Dropping data for {peer} (queue full)")
@@ -397,7 +416,7 @@ class Communicator[T](abc.ABC):
         """Additional connection ini after peer setup"""
 
     def _connection_pre_fin(self, peer: uuid.UUID) -> None:
-        """Additional connection fin before peer taredown"""
+        """Additional connection fin before peer teardown"""
 
     def _connection_ini(self, comm: T) -> uuid.UUID:
         """Handle new incomming connections"""
@@ -456,7 +475,7 @@ class Communicator[T](abc.ABC):
         Note: Currently peers can not be specified.
         """
         # NOTE: peers could be missing or disconnect creating infinite wait, which is an expected state during startup
-        assert len(peers) == 0, "Comunicators can not get from specific peer"
+        assert len(peers) == 0, "Communicators can not get from specific peer"
         peer = self._get(*peers)
 
         # Exit signaled
@@ -464,7 +483,7 @@ class Communicator[T](abc.ABC):
             raise ResourceClosed(self.id)
 
         state = self._states[peer]
-        get_queue = state.get_queue
+        get_queue = state._get_queue
 
         # Get object
         stream = get_queue.get_nowait()
@@ -498,13 +517,13 @@ class Communicator[T](abc.ABC):
         For clients if no peers are defined, data is send to the server.
         For servers if no peers are defined, data is send to all clients.
 
-        It is prefered to specify multiple peers insted of issuing multiple puts,
+        It is preferred to specify multiple peers instead of issuing multiple puts,
         as data will only be serialized once and protocols may use optimized routes.
 
         Note: Only servers can send to a particular client.
 
         Future is resolved when data is safe to mutate again.
-        Future may raise `ResouceClose(uuid.UUID)` if the peer or itself are closed.
+        Future may raise `ResourceClose(uuid.UUID)` if the peer or itself are closed.
         Future may raise protocol specific exceptions.
         """
         if not peers:
@@ -556,7 +575,7 @@ class Communicator[T](abc.ABC):
 
 
 def new(protocol: Protocol = Protocol.TCP, purpose: Purpose = Purpose.CLIENT, options: CommunicatorOptions = CommunicatorOptions()) -> Communicator:
-    """Generate comunicator"""
+    """Generate communicator"""
     module = importlib.import_module(f"{__name__}.{protocol}.{purpose}")
     cls: type[Communicator] = getattr(module, "Communicator")
     return cls(options)

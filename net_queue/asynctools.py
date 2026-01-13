@@ -80,7 +80,7 @@ def merge_futures(fs: abc.Iterable[Future], return_when=futures.ALL_COMPLETED) -
     FIRST_EXCEPTION: when any future finishes by raising an exception, raises its exception
     ALL_COMPLETED: when all futures finish or are cancelled, returns None
 
-    When no futures are provied, returns None
+    When no futures are provided, returns None
     """
     future = Future()
     fs = frozenset(fs)

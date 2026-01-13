@@ -74,7 +74,7 @@ pip install -e .
 ### Constants
 - `Protocol`:
 
-  Comunication protocol
+  Communication protocol
 
   - `TCP`
   - `MQTT` (requires external broker)
@@ -82,7 +82,7 @@ pip install -e .
 
 - `Purpose`:
 
-  Comunication purpose
+  Communication purpose
 
   - `CLIENT`
   - `SERVER`
@@ -90,15 +90,15 @@ pip install -e .
 ### Structures
 - `CommunicatorOptions(...)`
 
-  Comunicatior options
+  Communicator options
 
   - `id: uuid.UUID = uuid.uuid4()` (random)
   - `netloc: NetworkLocation = NetworkLocation('127.0.0.1', 51966)`
   - `workers: int = 1`
 
-    Maximun number of threads to use for connection handeling.
+    Maximum number of threads to use for connection handling.
     Depending on the protocol 1~3 more maybe used, however they will be idle most of the time.
-    On high throughput aplications or high latency networks this may need increasing.
+    On high throughput applications or high latency networks this may need increasing.
 
   - `connection: ConnectionOptions = ConnectionOptions()`
   - `serialization: SerializationOptions = SerializationOptions()`
@@ -108,44 +108,44 @@ pip install -e .
 
   Connection options
 
-  There are no definite values, depends on: usecase, OS/stack/version and link specs.
-  Its recommended to test your configuration (or preferably set them dynamicly).
-  There are *ruls of thumb* but they serve as a baseline.
+  There are no definite values, depends on: use case, OS/stack/version and link specs.
+  Its recommended to test your configuration (or preferably set them dynamically).
+  There are *rules of thumb* but they serve as a baseline.
 
-  - `max_size: int = 4 * 1024 ** 2` (4 MiB)
+  - `get_merge: bool = True`
 
-    Maximun message size to send to underlying protocol before splitting.
+    Merge message fragments to a contiguous memory block after receive.
 
-    Selection: Bandwidth-delay product of network (less +streaming, more +bursty).
-    Default: Tipical connection (80Mbps @ 50ms).
+  - `put_merge: bool = True`
 
-  - `merge_size: int = max_size`
+    Merge message fragments to a contiguous memory block before send.
 
-    Maximun message size to merge to when chunks are too small to efficently send.
-    Internally a buffer of this size is preallocated on construction.
-
-    Selection: Max size but tunable for RAM/CPU usage (less -RAM/+CPU, more +RAM/-CPU).
-    Default: Balanced RAM/CPU usage.
-
-  - `efficient_size: int = max_size / 64`
+  - `efficient_size: int = 64 * 1024 ** 1` (64 KiB)
 
     Minimum message size to consider the send efficient before attempting merging.
     If no more massages are queued then the message will be sent as-is.
 
-    Selection: Amortice overhead of abstractions/syscalls/headers (less -latency, more +efficiency).
-    Default: Maximun TCP segment size.
+    Selection: Amortize overhead of abstractions/syscalls/headers (less -latency, more +efficiency).
+    Default: Maximum TCP segment size.
+
+  - `protocol_size: int = 4 * 1024 ** 2` (4 MiB)
+
+    Maximum message size to send to underlying protocol before splitting.
+
+    Selection: Bandwidth-delay product of network (less +streaming, more +bursty).
+    Default: Typical connection (80Mbps @ 50ms).
+
+  - `queue_size: int = 1 ** 1024 ** 3` (1 GiM)
+
+    Maximum queued up messages before dropping incoming messages.
+
+  - `message_size: int = 1 ** 1024 * 4` (1 TiB)
+
+    Maximum message size to deserialize before attempting splitting.
 
 - `SerializationOptions(...)`
 
   Serialization options
-
-  - `message_size: int = -1` (unlimited)
-
-    Maximun message size to deserialize before attempting splitting.
-
-  - `queue_size: int = -1` (unlimited)
-
-    Maximun queued up messages before dropping incoming messages.
 
   - `load: Callable[[Stream], Any] = PickleSerializer().load`
 
@@ -167,7 +167,7 @@ pip install -e .
 
   - `certificate: Path | None = None`
 
-    Server's certifcate chain or client's trust chain
+    Server's certificate chain or client's trust chain
 
     Required for servers, for clients if not provided, it defaults to the system's chain.
 
@@ -183,27 +183,27 @@ pip install -e .
 ### Functions
 - `new(protocol, purpose, options)`
 
-  Create a comunicator.
+  Create a communicator.
 
   - `protocol: Protocol = Purpose.TCP`
   - `purpose: Purpose = Purpose.Client`
-  - `options: ComunicatorOptions = ComunicatorOptions()`
+  - `options: CommunicatorOptions = CommunicatorOptions()`
 
 ### Classes
-- `Comunicator(options)`
+- `Communicator(options)`
 
   Communicator implementation
 
   Operations are thread-safe.
 
-  Comunicator has `with` support.
+  Communicator has `with` support.
 
-  - `options: ComunicatorOptions = ComunicatorOptions()`
+  - `options: CommunicatorOptions = CommunicatorOptions()`
 
   ---
 
   - `id: uuid.UUID` (helper for `options.id`)
-  - `options: ComunicatorOptions`
+  - `options: CommunicatorOptions`
 
   - `put(data: Any, *peers: uuid.UUID) -> Future[None]`
 
@@ -212,13 +212,13 @@ pip install -e .
     For clients if no peers are defined, data is send to the server.
     For servers if no peers are defined, data is send to all clients.
 
-    It is prefered to specify multiple peers insted of issuing multiple puts,
+    It is preferred to specify multiple peers instead of issuing multiple puts,
     as data will only be serialized once and protocols may use optimized routes.
 
     Note: Only servers can send to a particular client.
 
     Future is resolved when data is safe to mutate again.
-    Future may raise `ResouceClose(uuid.UUID)` if the peer or itself are closed.
+    Future may raise `ResourceClose(uuid.UUID)` if the peer or itself are closed.
     Future may raise protocol specific exceptions.
 
   - `get(*peers: uuid.UUID) -> Any`
@@ -233,7 +233,7 @@ pip install -e .
 
     Close the communicator
 
-- `{protocol}.{purpose}.Comunicator(options)`
+- `{protocol}.{purpose}.Communicator(options)`
 
   Concrete communicator implementation for the given protocol and purpose
 
@@ -242,7 +242,7 @@ pip install -e .
   Zero-copy non-blocking pipe-like
 
   Interface mimics a non-blocking BufferedRWPair,
-  but operations return memoryviews insted of bytes.
+  but operations return memoryviews instead of bytes.
 
   Operations are not thread-safe.
   Reader is responsible of releasing chunks.
@@ -392,7 +392,7 @@ Put
 - Communication will not modify object
 - Consumer must not modify object util future resolved
 - Resolved futures acknowledge peer reception
-- ResourceClosed error futures indicates peer diconnected
+- ResourceClosed error futures indicates peer disconnected
 
 Get
 - Always block
@@ -414,33 +414,33 @@ Parallelism: Single threaded (1+1+1 threads)
 
 MQTT broker implementations are not common, so the server provided here is actually another client. Therefore the address and port provided to both, the client and server, should be the one of the actual broker, not where the server is running.
 
-The MQTT library handles comunications single-threaded, therefore operations on related callbacks are limited to pushing or pulling data from queues without blocking, so all operations are minimal and fast.
+The MQTT library handles communications single-threaded, therefore operations on related callbacks are limited to pushing or pulling data from queues without blocking, so all operations are minimal and fast.
 
-Peer-groups and global comunications are not optimized.
+Peer-groups and global communications are not optimized.
 
-First, chunked message ordering must be resolved. Single chunk order it is guaranteed by the protocol, even on with diferent topics. Second, peer-groups could be implemented using grouping requests that generate new UUID per group. This would reduce also reduce load on the broker.
+First, chunked message ordering must be resolved. Single chunk order it is guaranteed by the protocol, even on with different topics. Second, peer-groups could be implemented using grouping requests that generate new UUID per group. This would reduce also reduce load on the broker.
 
 ### gRPC
 Library: grpcio  
-Options: compresion disabled, protobuf disabled  
+Options: compression disabled, protobuf disabled  
 Parallelism: Thread pool (n+1+? threads)  
 
-gRPC does not conform well to a async send & async receive model, it expects remote procedure calls to be called, processed and responded. To simulate this model we created a bidirectional streaming procedure. Sent data is queued at the server, recived data is polled until available.
+gRPC does not conform well to a async send & async receive model, it expects remote procedure calls to be called, processed and responded. To simulate this model we created a bidirectional streaming procedure. Sent data is queued at the server, received data is polled until available.
 
-This also means there is no eager client reception or eager server send, so polling is requiered.
+This also means there is no eager client reception or eager server send, so polling is required.
 
-Polling is implemented with a exponential backoff time and a limit. The gRPC library queues requests, so requests would always be replyed in a timely maner, but we do not want to hogh the CPU or network with usesless requests.
+Polling is implemented with a exponential backoff time and a limit. The gRPC library queues requests, so requests would always be replied in a timely manner, but we do not want to hogg the CPU or network with useless requests.
 
-It is important to not hold the prodedures indefinitely, since this could starve the server of threads. Additionaly, if a streaming direction was already closed, messages could end up queued forever if not restarted.
+It is important to not hold the procedures indefinitely, since this could starve the server of threads. Additionally, if a streaming direction was already closed, messages could end up queued forever if not restarted.
 
-To alleviate network latency queues are flushed unidirectionally in turns, insted of interleaving directions. However on high throughput applications this could lead to a very bursty receive pattern.
+To alleviate network latency queues are flushed unidirectionally in turns, instead of interleaving directions. However on high throughput applications this could lead to a very bursty receive pattern.
 
 ## Planned
 Implement reconnection support. The protocol already has support for it, server support is done, clients can reconnect but can not yet disconnect without flushing.
 
 Implement two-way connection expiration and keep-alives. There is no reliable way to track connection drops between communication implementations. Most of them end up with memory leaks. If desired expiration periods could be long and automatic client reconnections could be allowed, enabling MQTT-like reliability without the cost.
 
-Implement message cancelling support. It is already plausible to cancel a message if it is queued but not buffered. However chaning the future from a pending state to running would cause a lock acquire.
+Implement message cancelling support. It is already plausible to cancel a message if it is queued but not buffered. However changing the future from a pending state to running would cause a lock acquire.
 
 ## Acknowledgments
 The library has been partially supported by:

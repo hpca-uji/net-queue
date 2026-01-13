@@ -1,5 +1,6 @@
 """TCP communications"""
 
+import ssl
 import socket
 import warnings
 import selectors
@@ -25,11 +26,11 @@ CONTROL_STOP = object()
 CONTROL_EVENT = b"\0"
 
 
-class Protocol[T](nq.Communicator[T]):
+class Protocol(nq.Communicator[socket.socket]):
     """Shared base TCP implementation"""
 
     def __init__(self, options: nq.CommunicatorOptions = nq.CommunicatorOptions()) -> None:
-        """Inizialize comunicator"""
+        """Initialize communicator"""
         super().__init__(options)
 
         self._selector = selectors.DefaultSelector()
@@ -65,7 +66,7 @@ class Protocol[T](nq.Communicator[T]):
 
     def _handle_control_socket(self, sock: socket.socket, mask):
         """Handle selector notification"""
-        if len(sock.recv(self.options.connection.max_size)) == 0:
+        if len(sock.recv(self.options.connection.protocol_size)) == 0:
             return CONTROL_STOP
 
         # Handle tasks
@@ -100,6 +101,59 @@ class Protocol[T](nq.Communicator[T]):
                 else:
                     if result is CONTROL_STOP:
                         running = False
+
+    def _handle_recv(self, comm: socket.socket) -> None:
+        """Receive communication"""
+        peer = self._set_default_peer(comm)
+        state = self._states[peer]
+
+        if state._get_buffer is not None:
+            try:
+                size = comm.recv_into(state._get_buffer)
+            except (BlockingIOError, ssl.SSLWantReadError, ssl.SSLWantWriteError):
+                return
+            else:
+                with state._get_buffer:
+                    state._get_buffer = state._get_buffer[size:]
+                state.get_optimize()
+        else:
+            try:
+                data = comm.recv(self.options.connection.protocol_size)
+            except (BlockingIOError, ssl.SSLWantReadError, ssl.SSLWantWriteError):
+                return
+            else:
+                size = len(data)
+                state.get_write(data)
+
+        if self.options.security and (pending := comm.pending()):  # type: ignore
+            data = comm.recv(pending)
+            state.get_write(data)
+
+        if not size:
+            if state.status or not state._put_queue.empty():
+                warnings.warn(f"Lost connection unexpectedly ({comm})", RuntimeWarning)
+            return
+
+        self._process_gets(peer)
+        peer = state.peer
+
+    def _handle_send(self, comm: socket.socket) -> None:
+        """Send communication"""
+        peer = self._set_default_peer(comm)
+        state = self._states[peer]
+
+        size = 0
+        state.put_flush_queue()
+        if state._put_stream.empty():
+            return
+        with state.put_read() as view:
+            try:
+                size = comm.send(view)
+            except (ssl.SSLWantReadError, ssl.SSLWantWriteError):
+                pass
+            if size < len(view):
+                state._put_stream.unreadchunk(view[size:])
+        self._put_commit(peer, size)
 
     def _close(self) -> None:
         """Close the communication"""

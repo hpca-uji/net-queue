@@ -48,7 +48,7 @@ class Communicator(Protocol[grpc.StreamStreamMultiCallable], client.Client[grpc.
         else:
             self._channel = grpc.insecure_channel(**config)
 
-        self._conntected = True
+        self._connected = True
         self._comm = self._channel.stream_stream(
             method="/grpc/comm",
             request_serializer=lambda x: x,  # type: ignore (handled externally)
@@ -68,7 +68,7 @@ class Communicator(Protocol[grpc.StreamStreamMultiCallable], client.Client[grpc.
         try:
             peer = self._get_events.get_nowait()
         except Empty:
-            if not hasattr(self, "_conntected"):
+            if not hasattr(self, "_connected"):
                 raise ResourceClosed()
             comm = self._comm
             self._pool.submit(self._s2c, comm)
@@ -123,10 +123,10 @@ class Communicator(Protocol[grpc.StreamStreamMultiCallable], client.Client[grpc.
         else:
             return
 
-        # Handle recive loop
+        # Handle receive loop
         backoff = None
         while self._get_grpc.empty():
-            if not hasattr(self, "_conntected"):
+            if not hasattr(self, "_connected"):
                 return
             elif backoff:
                 self._put_grpc.wait(next(backoff))
@@ -138,7 +138,7 @@ class Communicator(Protocol[grpc.StreamStreamMultiCallable], client.Client[grpc.
 
     def _connection_pre_fin(self, peer: uuid.UUID) -> None:
         """Communication finalization"""
-        del self._conntected
+        del self._connected
         super()._connection_pre_fin(peer)
 
     def _close(self) -> None:
@@ -152,7 +152,7 @@ class Communicator(Protocol[grpc.StreamStreamMultiCallable], client.Client[grpc.
             self._pool.submit(self._s2c, comm).result()
 
         with self._lock:
-            while hasattr(self, "_conntected"):
+            while hasattr(self, "_connected"):
                 self._lock.wait()
 
         self._pool.shutdown()

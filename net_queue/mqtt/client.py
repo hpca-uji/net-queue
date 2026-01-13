@@ -21,7 +21,7 @@ __all__ = (
 END_COMM = b""
 
 
-class Communicator(Protocol[str], client.Client[str]):
+class Communicator(Protocol, client.Client[str]):
     """MQTT client"""
 
     def __init__(self, options: CommunicatorOptions = CommunicatorOptions()) -> None:
@@ -39,7 +39,7 @@ class Communicator(Protocol[str], client.Client[str]):
         comm = self._peer(message)
         peer = self._set_default_peer(comm)
         state = self._states[peer]
-        state.get_buffer.write(message.payload)
+        state._get_stream.write(message.payload)
         self._process_gets(peer)
         peer = state.peer
 

@@ -19,7 +19,7 @@ __all__ = (
 ARG_MISSING = object()
 
 
-class Protocol[T](nq.Communicator[T]):
+class Protocol(nq.Communicator[str]):
     """Shared base MQTT implementation"""
 
     _qos = 0
@@ -61,7 +61,7 @@ class Protocol[T](nq.Communicator[T]):
         self._client.subscribe(topic=topic, qos=self._qos)
 
     def _peer(self, message: mqtt_client.MQTTMessage) -> str:
-        """Get peer from a mesage"""
+        """Get peer from a message"""
         return message.topic.split("/", 1)[1]
 
     def _publish(self, topic: str, data=None) -> None:
