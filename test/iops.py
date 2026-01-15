@@ -1,10 +1,12 @@
 """Communications IOPS test"""
 
-import math
 import sys
+import math
 import time
 import enum
+import copy
 import random
+from pathlib import Path
 from threading import Thread
 from argparse import ArgumentParser, Namespace
 
@@ -14,6 +16,10 @@ import net_queue as nq
 
 
 __all__ = ()
+
+
+from pydtnn.utils.profiler import MemoryProfiler, TimeProfiler
+profiler = TimeProfiler()
 
 
 class Peer(enum.StrEnum):
@@ -33,7 +39,6 @@ parser = ArgumentParser(prog="nq-test-iops", description="net-queue IOPS test")
 parser.add_argument("proto", choices=list(nq.Protocol), help="Which protocol to use")
 parser.add_argument("peer", choices=list(Peer), help="Which peer type to use")
 parser.add_argument("mode", choices=list(Mode), help="Synchronization mode")
-parser.add_argument("--start-delay", type=float, default=3.0, help="Time to wait for server startup")
 parser.add_argument("--delay", type=float, default=0.0, help="Time to wait before reception start (to cause buffering)")
 parser.add_argument("--min-size", type=int, default=8, help="Exponent of minimum message size")
 parser.add_argument("--step-size", type=int, default=2, help="Exponent between message sizes")
@@ -41,6 +46,18 @@ parser.add_argument("--max-size", type=int, default=32, help="Exponent of maximi
 parser.add_argument("--step-expo", type=float, default=0.5, help="Exponent of number of splits when stepping down a size")
 parser.add_argument("--reps", type=int, default=1, help="Number of repetitions of messages")
 parser.add_argument("--clients", type=int, default=1, help="Number of expected clients for the server")
+parser.add_argument("--secure", action="store_true", default=False, help="Enable secure communications")
+
+
+def get_options(config: Namespace) -> nq.CommunicatorOptions:
+    """Get communicator options"""
+    options = nq.CommunicatorOptions()
+
+    if config.secure:
+        security = nq.SecurityOptions(key=Path("key.pem"), certificate=Path("cert.pem"))
+        config.options = copy.replace(config.options, security=security)
+
+    return options
 
 
 def get(comm: nq.Communicator, msgs: list[bytearray]):
@@ -103,12 +120,13 @@ def server(config: Namespace):
     messages = generate(config)
     sizes = list(map(len, messages)) * config.clients
 
-    with nq.new(protocol=config.proto, purpose=nq.Purpose.SERVER) as server:
+    with nq.new(protocol=config.proto, purpose=nq.Purpose.SERVER, options=get_options(config)) as server:
         get_thread = Thread(target=get, args=(server, messages * config.clients))
         put_thread = Thread(target=put, args=(server, messages))
         for _ in range(config.clients):
             server.get()
         server.put(None)
+        profiler.start()
         start_time = time.time()
 
         match config.mode:
@@ -124,8 +142,10 @@ def server(config: Namespace):
                 put_thread.join()
 
     end_time = time.time()
+    profiler.stop()
 
     print_stats(sizes=sizes, time=end_time - start_time)
+    print(f"Memory: {profiler.events[0]}B")
 
 
 def client(config: Namespace):
@@ -133,12 +153,12 @@ def client(config: Namespace):
     messages = generate(config)
     sizes = list(map(len, messages)) * config.clients
 
-    time.sleep(config.start_delay)
-    with nq.new(protocol=config.proto, purpose=nq.Purpose.CLIENT) as client:
+    with nq.new(protocol=config.proto, purpose=nq.Purpose.CLIENT, options=get_options(config)) as client:
         get_thread = Thread(target=get, args=(client, messages))
         put_thread = Thread(target=put, args=(client, messages))
         client.put(None)
         client.get()
+        profiler.start()
         start_time = time.perf_counter()
 
         match config.mode:
@@ -154,8 +174,10 @@ def client(config: Namespace):
                 put_thread.join()
 
     end_time = time.perf_counter()
+    profiler.stop()
 
     print_stats(sizes=sizes, time=end_time - start_time)
+    print(f"Memory: {profiler.events[0]}B")
 
 
 def main(config: Namespace):

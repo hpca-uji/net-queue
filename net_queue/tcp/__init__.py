@@ -42,6 +42,17 @@ class Protocol(nq.Communicator[socket.socket]):
         self._loop_thread.add_done_callback(asynctools.future_warn_exception)
         self._task_queue = SimpleQueue[Task]()
 
+        # Receive fast-path
+        if self.options.security:
+            try:
+                from sabctools import unlocked_ssl_recv_into
+            except Exception:
+                self._socket_recv_into = ssl.SSLSocket.recv_into
+            else:
+                self._socket_recv_into = unlocked_ssl_recv_into
+        else:
+            self._socket_recv_into = socket.socket.recv_into
+
     def _modify_selector(self, fileobj, events) -> None:
         """Modify registered events"""
         try:
@@ -97,7 +108,8 @@ class Protocol(nq.Communicator[socket.socket]):
                 try:
                     result = future.result()
                 except Exception as exc:
-                    warnings.warn(repr(exc), RuntimeWarning)
+                    from traceback import format_exception
+                    warnings.warn("\n".join(format_exception(exc)), RuntimeWarning)
                 else:
                     if result is CONTROL_STOP:
                         running = False
@@ -109,7 +121,7 @@ class Protocol(nq.Communicator[socket.socket]):
 
         if state._get_buffer is not None:
             try:
-                size = comm.recv_into(state._get_buffer)
+                size = self._socket_recv_into(comm, state._get_buffer)  # type: ignore (SSL typing)
             except (BlockingIOError, ssl.SSLWantReadError, ssl.SSLWantWriteError):
                 return
             else:
@@ -125,7 +137,7 @@ class Protocol(nq.Communicator[socket.socket]):
                 size = len(data)
                 state.get_write(data)
 
-        if self.options.security and (pending := comm.pending()):  # type: ignore
+        if self.options.security and (pending := comm.pending()):  # type: ignore (SSL typing)
             data = comm.recv(pending)
             state.get_write(data)
 

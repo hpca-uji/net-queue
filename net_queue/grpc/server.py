@@ -68,8 +68,9 @@ class Communicator(Protocol[str], server.Server[str]):
         yield from self._put_flush(peer)
         for data in messages:
             state.get_write(data)
-            self._process_gets(peer)
-            peer = state.peer
+
+        self._process_gets(peer)
+        peer = state.peer
 
         if not state.status and state.put_empty():
             self._connection_fin(comm)

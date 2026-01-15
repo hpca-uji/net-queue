@@ -8,10 +8,16 @@ import warnings
 import functools
 from collections import abc, deque
 
+# bytearray fast-path
+try:
+    from sabctools import bytearray_malloc as bytearray
+except Exception:
+    pass
 
 __all__ = (
     "byteview",
-    "memoryview_index",
+    "bytearray",
+    "buffer_index",
     "Stream",
     "Packer",
     "PickleSerializer",
@@ -25,11 +31,11 @@ def byteview(b: abc.Buffer) -> memoryview:
         return view.cast("B")
 
 
-def memoryview_index(view: memoryview, sub: bytes) -> int:
+def buffer_index(b: abc.Buffer, sub: bytes) -> int:
     """Find lowest index where substring is found"""
     if len(sub) != 1:
         raise TypeError("Only single byte substring are supported")
-    for i, byte in enumerate(view):
+    for i, byte in enumerate(b):
         if byte == sub:
             return i
     else:
@@ -192,7 +198,7 @@ class Stream(io.BufferedIOBase):
         with Stream() as stream:
             for chunk in self.readchunks():
                 try:
-                    i = memoryview_index(chunk, b"\n")
+                    i = buffer_index(chunk, b"\n")
                 except ValueError:
                     stream.writechunk(chunk)
                     continue

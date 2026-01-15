@@ -1,8 +1,6 @@
 """Communications package"""
 
 # FIXME: session_ini/fin export future or surface error
-# FIXME: TCP / GRPC threading performance
-# FIXME: TCP + TLS performance
 
 import abc
 import uuid
@@ -24,7 +22,7 @@ from bidict import bidict
 from net_queue import asynctools
 from net_queue.asynctools import merge_futures
 from net_queue.asynctools import thread_queue
-from net_queue.stream import Packer, PickleSerializer, Stream, byteview
+from net_queue.stream import Packer, PickleSerializer, Stream, byteview, bytearray
 
 
 __all__ = (
@@ -138,7 +136,7 @@ class Session:
         self._packer = Packer()
 
         self._ack_queue = dict[Stream, Future]()
-        self._ack_buffer = deque[tuple[int, Future]]()
+        self._ack_stream = deque[tuple[int, Future]]()
 
         # Get
         self._get_queue = SimpleQueue[Stream]()
@@ -157,6 +155,23 @@ class Session:
 
         if not self._options.connection.put_merge:
             self.put_optimize = lambda: None
+
+    def __repr__(self) -> str:
+        """Session representation"""
+        return f"<{self.__class__.__name__}" \
+            f" peer={self.peer!r}" \
+            f" status={self.status!r}" \
+            f" ack-queue={len(self._ack_queue)!r}" \
+            f" ack-stream={len(self._ack_stream)!r}" \
+            f" get-queue={self._get_queue.qsize()!r}" \
+            f" get-buffer={None if self._get_buffer is None else len(self._get_buffer)!r}" \
+            f" get-size={self._get_size!r}" \
+            f" get-stream={self._put_stream.nbytes!r}" \
+            f" put-queue={self._put_queue.qsize()!r}" \
+            f" put-buffer={None if self._put_buffer is None else len(self._put_buffer)!r}" \
+            f" put-size={self._put_size!r}" \
+            f" put-stream={self._put_stream.nbytes!r}" \
+            ">"
 
     def get_empty(self) -> bool:
         """Is get connection flushed"""
@@ -226,7 +241,7 @@ class Session:
 
     def put_optimize(self) -> None:
         """Optimize put buffer"""
-        if self._get_stream.nchunks <= 1 or len(self._get_stream.peekchunk()) >= self._put_size:
+        if self._put_stream.nchunks <= 1 or len(self._put_stream.peekchunk()) >= self._put_size:
             return
 
         merge_size = self._put_stream.readinto(self._put_buffer)
@@ -235,7 +250,7 @@ class Session:
     def put_commit(self, size: int) -> col_abc.Iterable[Future[None]]:
         """Mark size's bytes as fully transmitted (or freeable)"""
         while size > 0:
-            pending, future = self._ack_buffer[0]
+            pending, future = self._ack_stream[0]
             shared = min(size, pending)
             pending -= shared
             size -= shared
@@ -243,10 +258,10 @@ class Session:
             assert size >= 0, "Committed more puts than queued"
 
             if pending > 0:
-                self._ack_buffer[0] = (pending, future)
+                self._ack_stream[0] = (pending, future)
                 break
 
-            self._ack_buffer.popleft()
+            self._ack_stream.popleft()
             yield future
 
     def get_flush_buffer(self) -> col_abc.Iterable[Stream]:
@@ -264,7 +279,7 @@ class Session:
                 stream = self._put_queue.get_nowait()
                 future = self._ack_queue.pop(stream)
                 size = self._packer.pack(self._put_stream, stream)
-                self._ack_buffer.append((size, future))
+                self._ack_stream.append((size, future))
         except Empty:
             pass
 

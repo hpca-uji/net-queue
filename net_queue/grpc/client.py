@@ -81,10 +81,12 @@ class Communicator(Protocol[grpc.StreamStreamMultiCallable], client.Client[grpc.
         peer = self._set_default_peer(comm)
         state = self._states[peer]
 
+        # Message streaming
         for data in comm(self._put_flush(peer)):
             state.get_write(data)
-            self._process_gets(peer)
-            peer = state.peer
+
+        self._process_gets(peer)
+        peer = state.peer
 
         if not state.status and state.put_empty():
             self._connection_fin(comm)

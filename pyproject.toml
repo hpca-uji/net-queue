@@ -1,6 +1,6 @@
 [project]
 name = "net-queue"
-version = "1.0.0"
+version = "1.1.0"
 description = "Easy & fast network communications using queues"
 readme = "README.md"
 license = "GPL-3.0-or-later"
@@ -23,6 +23,7 @@ urls = { Homepage = "https://github.com/hpca-uji/net-queue", Repository = "https
 requires-python = ">=3.13"
 dependencies = [
     "bidict>=0.23.1",
+    "sabctools>=9.3.0",
     "grpcio>=1.74.0",
     "paho-mqtt>=2.1.0"
 ]
