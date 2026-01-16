@@ -190,7 +190,7 @@ pip install -e .
   - `options: CommunicatorOptions = CommunicatorOptions()`
 
 ### Classes
-- `Communicator(options)`
+- `core.Communicator(options)`
 
   Communicator implementation
 
@@ -218,7 +218,7 @@ pip install -e .
     Note: Only servers can send to a particular client.
 
     Future is resolved when data is safe to mutate again.
-    Future may raise `ResourceClose(uuid.UUID)` if the peer or itself are closed.
+    Future may raise `ConnectionError(uuid.UUID)` if the peer or itself are closed.
     Future may raise protocol specific exceptions.
 
   - `get(*peers: uuid.UUID) -> Any`
@@ -237,7 +237,7 @@ pip install -e .
 
   Concrete communicator implementation for the given protocol and purpose
 
-- `stream.Stream()`
+- `utils.stream.Stream()`
 
   Zero-copy non-blocking pipe-like
 
@@ -317,7 +317,7 @@ pip install -e .
 
       Construct a stream from bytes
 
-- `stream.PickleSerializer(...)`
+- `utils.streamtools.PickleSerializer(...)`
 
   Pickle-stream serializer
 
@@ -343,7 +343,7 @@ pip install -e .
 
     Transform a stream into useful data
 
-- `stream.BytesSerializer(...)`
+- `utils.streamtools.BytesSerializer(...)`
 
   Bytes-stream serializer
 
@@ -392,12 +392,12 @@ Put
 - Communication will not modify object
 - Consumer must not modify object util future resolved
 - Resolved futures acknowledge peer reception
-- ResourceClosed error futures indicates peer disconnected
+- ConnectionError error futures indicates peer disconnected
 
 Get
 - Always block
-- Returns a message or raises ResourceClosed
-- Once closed it continues working until exhausted then it raises ResourceClosed
+- Returns a message or raises ConnectionError
+- Once closed it continues working until exhausted then it raises ConnectionError
 
 Close
 - Always block

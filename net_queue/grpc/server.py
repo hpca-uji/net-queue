@@ -4,9 +4,9 @@ import grpc
 import traceback
 from collections import abc
 
-from net_queue import server
+from net_queue.core import server
 from net_queue.grpc import Protocol
-from net_queue import CommunicatorOptions
+from net_queue.core.comm import CommunicatorOptions
 
 
 __all__ = (
@@ -62,17 +62,17 @@ class Communicator(Protocol[str], server.Server[str]):
         # NOTE: communication thread
         comm = context.peer()
         peer = self._set_default_peer(comm)
-        state = self._states[peer]
+        session = self._sessions[peer]
 
         # Message streaming
         yield from self._put_flush(peer)
         for data in messages:
-            state.get_write(data)
+            session.get_write(data)
 
         self._process_gets(peer)
-        peer = state.peer
+        peer = session.peer
 
-        if not state.status and state.put_empty():
+        if not session.state and session.put_empty():
             self._connection_fin(comm)
 
     def _close(self) -> None:

@@ -18,35 +18,10 @@ import net_queue as nq
 __all__ = ()
 
 
-from pydtnn.utils.profiler import MemoryProfiler, TimeProfiler
-profiler = TimeProfiler()
-
-
-class Peer(enum.StrEnum):
-    """Peer type"""
-    SERVER = enum.auto()
-    CLIENT = enum.auto()
-
-
 class Mode(enum.StrEnum):
     """Test mode"""
     SYNC = enum.auto()
     ASYNC = enum.auto()
-
-
-# Argument pasrser
-parser = ArgumentParser(prog="nq-test-iops", description="net-queue IOPS test")
-parser.add_argument("proto", choices=list(nq.Protocol), help="Which protocol to use")
-parser.add_argument("peer", choices=list(Peer), help="Which peer type to use")
-parser.add_argument("mode", choices=list(Mode), help="Synchronization mode")
-parser.add_argument("--delay", type=float, default=0.0, help="Time to wait before reception start (to cause buffering)")
-parser.add_argument("--min-size", type=int, default=8, help="Exponent of minimum message size")
-parser.add_argument("--step-size", type=int, default=2, help="Exponent between message sizes")
-parser.add_argument("--max-size", type=int, default=32, help="Exponent of maximin message size")
-parser.add_argument("--step-expo", type=float, default=0.5, help="Exponent of number of splits when stepping down a size")
-parser.add_argument("--reps", type=int, default=1, help="Number of repetitions of messages")
-parser.add_argument("--clients", type=int, default=1, help="Number of expected clients for the server")
-parser.add_argument("--secure", action="store_true", default=False, help="Enable secure communications")
 
 
 def get_options(config: Namespace) -> nq.CommunicatorOptions:
@@ -55,7 +30,7 @@ def get_options(config: Namespace) -> nq.CommunicatorOptions:
 
     if config.secure:
         security = nq.SecurityOptions(key=Path("key.pem"), certificate=Path("cert.pem"))
-        config.options = copy.replace(config.options, security=security)
+        options = copy.replace(config.options, security=security)
 
     return options
 
@@ -126,7 +101,6 @@ def server(config: Namespace):
         for _ in range(config.clients):
             server.get()
         server.put(None)
-        profiler.start()
         start_time = time.time()
 
         match config.mode:
@@ -142,10 +116,8 @@ def server(config: Namespace):
                 put_thread.join()
 
     end_time = time.time()
-    profiler.stop()
 
     print_stats(sizes=sizes, time=end_time - start_time)
-    print(f"Memory: {profiler.events[0]}B")
 
 
 def client(config: Namespace):
@@ -158,7 +130,6 @@ def client(config: Namespace):
         put_thread = Thread(target=put, args=(client, messages))
         client.put(None)
         client.get()
-        profiler.start()
         start_time = time.perf_counter()
 
         match config.mode:
@@ -174,10 +145,8 @@ def client(config: Namespace):
                 put_thread.join()
 
     end_time = time.perf_counter()
-    profiler.stop()
 
     print_stats(sizes=sizes, time=end_time - start_time)
-    print(f"Memory: {profiler.events[0]}B")
 
 
 def main(config: Namespace):
@@ -190,4 +159,16 @@ def main(config: Namespace):
 
 
 if __name__ == "__main__":
+    parser = ArgumentParser(prog="nq-test-iops", description="net-queue IOPS test")
+    parser.add_argument("proto", choices=list(nq.Protocol), help="Which protocol to use")
+    parser.add_argument("peer", choices=list(nq.Purpose), help="Which peer type to use")
+    parser.add_argument("mode", choices=list(Mode), help="Which operation mode to use")
+    parser.add_argument("--delay", type=float, default=0.0, help="Time to wait before reception start (to cause buffering)")
+    parser.add_argument("--min-size", type=int, default=8, help="Exponent of minimum message size")
+    parser.add_argument("--step-size", type=int, default=2, help="Exponent between message sizes")
+    parser.add_argument("--max-size", type=int, default=32, help="Exponent of maximin message size")
+    parser.add_argument("--step-expo", type=float, default=0.5, help="Exponent of number of splits when stepping down a size")
+    parser.add_argument("--reps", type=int, default=1, help="Number of repetitions of messages")
+    parser.add_argument("--clients", type=int, default=1, help="Number of expected clients for the server")
+    parser.add_argument("--secure", action="store_true", default=False, help="Enable secure communications")
     main(parser.parse_args())

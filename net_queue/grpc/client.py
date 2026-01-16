@@ -8,11 +8,11 @@ from collections import abc
 from queue import SimpleQueue, Empty
 from concurrent.futures import Future
 
-from net_queue import client
-from net_queue import asynctools
+from net_queue.core import client
+from net_queue.utils import asynctools
 from net_queue.grpc import Protocol
-from net_queue.stream import Stream
-from net_queue import CommunicatorOptions, ResourceClosed
+from net_queue.utils.stream import Stream
+from net_queue.core.comm import CommunicatorOptions
 
 
 __all__ = (
@@ -69,7 +69,7 @@ class Communicator(Protocol[grpc.StreamStreamMultiCallable], client.Client[grpc.
             peer = self._get_events.get_nowait()
         except Empty:
             if not hasattr(self, "_connected"):
-                raise ResourceClosed()
+                raise ConnectionAbortedError(self.id)
             comm = self._comm
             self._pool.submit(self._s2c, comm)
             peer = self._get_events.get()
@@ -79,16 +79,16 @@ class Communicator(Protocol[grpc.StreamStreamMultiCallable], client.Client[grpc.
     def _handle_connection(self, comm: grpc.StreamStreamMultiCallable) -> None:
         """Communication round"""
         peer = self._set_default_peer(comm)
-        state = self._states[peer]
+        session = self._sessions[peer]
 
         # Message streaming
         for data in comm(self._put_flush(peer)):
-            state.get_write(data)
+            session.get_write(data)
 
         self._process_gets(peer)
-        peer = state.peer
+        peer = session.peer
 
-        if not state.status and state.put_empty():
+        if not session.state and session.put_empty():
             self._connection_fin(comm)
 
     @staticmethod
@@ -110,8 +110,8 @@ class Communicator(Protocol[grpc.StreamStreamMultiCallable], client.Client[grpc.
         """Communication client to server"""
         # Check if already handled
         peer = self._set_default_peer(comm)
-        state = self._states[peer]
-        if state.put_empty():
+        session = self._sessions[peer]
+        if session.put_empty():
             return
         self._handle_connection(comm)
 
@@ -147,10 +147,10 @@ class Communicator(Protocol[grpc.StreamStreamMultiCallable], client.Client[grpc.
         """Close the client"""
         comm = self._comm
         peer = self._comms.inverse[comm]
-        state = self._states[peer]
+        session = self._sessions[peer]
         self._session_fin(peer)
 
-        while state.status:
+        while session.state:
             self._pool.submit(self._s2c, comm).result()
 
         with self._lock:

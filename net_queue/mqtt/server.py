@@ -5,11 +5,11 @@ from concurrent.futures import Future
 
 import paho.mqtt.client as mqtt_client
 
-from net_queue import server
-from net_queue import asynctools
+from net_queue.core import server
+from net_queue.utils import asynctools
 from net_queue.mqtt import Protocol
-from net_queue.stream import Stream
-from net_queue import CommunicatorOptions
+from net_queue.utils.stream import Stream
+from net_queue.core.comm import CommunicatorOptions
 
 
 __all__ = (
@@ -33,22 +33,22 @@ class Communicator(Protocol, server.Server[str]):
 
     def _connection_post_ini(self, peer: uuid.UUID) -> None:
         comm = self._comms.pop(peer)
-        state = self._states.pop(peer)
+        state = self._sessions.pop(peer)
         peer = uuid.UUID(hex=comm)
         self._comms[peer] = comm
-        self._states[peer] = state
+        self._sessions[peer] = state
 
     def _c2s(self, client: mqtt_client.Client, userdata, mqtt_message: mqtt_client.MQTTMessage) -> None:
         """Client message handler"""
         # NOTE: communication thead
         comm = self._peer(mqtt_message)
         peer = self._set_default_peer(comm)
-        state = self._states[peer]
+        session = self._sessions[peer]
 
         data = mqtt_message.payload
-        state.get_write(data)
+        session.get_write(data)
         self._process_gets(peer)
-        peer = state.peer
+        peer = session.peer
 
     def _put(self, stream: Stream, peer: uuid.UUID) -> Future[None]:
         """Put stream into queue and notify"""
@@ -59,17 +59,17 @@ class Communicator(Protocol, server.Server[str]):
     def _s2c(self, peer: uuid.UUID):
         """Server to client communication"""
         comm = self._comms[peer]
-        state = self._states[peer]
+        session = self._sessions[peer]
 
         size = 0
-        state.put_flush_queue()
-        for view in state.put_flush_buffer():
+        session.put_flush_queue()
+        for view in session.put_flush_buffer():
             with view:
                 self._publish(f"s2c/{comm}", bytes(view))
                 size += len(view)
         self._put_commit(peer, size)
 
-        if not state.status and state.put_empty():
+        if not session.state and session.put_empty():
             self._connection_fin(comm)
 
     def _close(self) -> None:

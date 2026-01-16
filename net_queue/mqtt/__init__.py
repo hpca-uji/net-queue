@@ -5,9 +5,9 @@ import copy
 import paho.mqtt.enums as mqtte_enum
 import paho.mqtt.client as mqtt_client
 
-import net_queue as nq
-from net_queue import asynctools
-from net_queue.asynctools import thread_queue
+import net_queue.core.comm as nq
+from net_queue.utils import asynctools
+from net_queue.utils.asynctools import thread_queue
 
 
 __all__ = (

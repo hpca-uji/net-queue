@@ -2,7 +2,12 @@
 
 import uuid
 
-from net_queue import Communicator
+from net_queue.core.comm import Communicator
+
+
+__all__ = (
+    "Server",
+)
 
 
 class Server[T](Communicator[T]):

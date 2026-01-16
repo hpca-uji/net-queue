@@ -3,7 +3,12 @@
 from uuid import UUID
 from concurrent.futures import Future
 
-from net_queue import Communicator
+from net_queue.core.comm import Communicator
+
+
+__all__ = (
+    "Client",
+)
 
 
 class Client[T](Communicator[T]):

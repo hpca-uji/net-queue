@@ -7,10 +7,10 @@ import socket
 import selectors
 from concurrent.futures import Future
 
-from net_queue import client
+from net_queue.core import client
 from net_queue.tcp import Protocol
-from net_queue.stream import Stream
-from net_queue import CommunicatorOptions
+from net_queue.utils.stream import Stream
+from net_queue.core.comm import CommunicatorOptions
 
 
 __all__ = (
@@ -41,9 +41,9 @@ class Communicator(Protocol, client.Client[socket.socket]):
     def _handle_connection(self, comm: socket.socket, event) -> None:
         """Handle connection events"""
         peer = self._set_default_peer(comm)
-        state = self._states[peer]
+        session = self._sessions[peer]
 
-        if state.put_empty():
+        if session.put_empty():
             self._modify_selector(comm, selectors.EVENT_READ)
 
         if event & selectors.EVENT_WRITE:
@@ -52,12 +52,12 @@ class Communicator(Protocol, client.Client[socket.socket]):
         if event & selectors.EVENT_READ:
             self._handle_recv(comm)
 
-        if not state.put_empty():
+        if not session.put_empty():
             self._modify_selector(comm, selectors.EVENT_READ | selectors.EVENT_WRITE)
 
         self._notify_selector()
 
-        if not state.status and state.put_empty():
+        if not session.state and session.put_empty():
             self._connection_fin(comm)
 
     def _connection_pre_fin(self, peer: uuid.UUID) -> None:

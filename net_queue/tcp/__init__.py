@@ -8,9 +8,9 @@ from collections import abc
 from concurrent import futures
 from queue import Empty, SimpleQueue
 
-import net_queue as nq
-from net_queue import asynctools
-from net_queue.asynctools import thread_func
+import net_queue.core.comm as nq
+from net_queue.utils import asynctools
+from net_queue.utils.asynctools import thread_func
 
 
 __all__ = (
@@ -117,17 +117,17 @@ class Protocol(nq.Communicator[socket.socket]):
     def _handle_recv(self, comm: socket.socket) -> None:
         """Receive communication"""
         peer = self._set_default_peer(comm)
-        state = self._states[peer]
+        session = self._sessions[peer]
 
-        if state._get_buffer is not None:
+        if session._get_buffer is not None:
             try:
-                size = self._socket_recv_into(comm, state._get_buffer)  # type: ignore (SSL typing)
+                size = self._socket_recv_into(comm, session._get_buffer)  # type: ignore (SSL typing)
             except (BlockingIOError, ssl.SSLWantReadError, ssl.SSLWantWriteError):
                 return
             else:
-                with state._get_buffer:
-                    state._get_buffer = state._get_buffer[size:]
-                state.get_optimize()
+                with session._get_buffer:
+                    session._get_buffer = session._get_buffer[size:]
+                session.get_optimize()
         else:
             try:
                 data = comm.recv(self.options.connection.protocol_size)
@@ -135,36 +135,36 @@ class Protocol(nq.Communicator[socket.socket]):
                 return
             else:
                 size = len(data)
-                state.get_write(data)
+                session.get_write(data)
 
         if self.options.security and (pending := comm.pending()):  # type: ignore (SSL typing)
             data = comm.recv(pending)
-            state.get_write(data)
+            session.get_write(data)
 
         if not size:
-            if state.status or not state._put_queue.empty():
+            if session.state or not session.put_empty():
                 warnings.warn(f"Lost connection unexpectedly ({comm})", RuntimeWarning)
             return
 
         self._process_gets(peer)
-        peer = state.peer
+        peer = session.peer
 
     def _handle_send(self, comm: socket.socket) -> None:
         """Send communication"""
         peer = self._set_default_peer(comm)
-        state = self._states[peer]
+        session = self._sessions[peer]
 
         size = 0
-        state.put_flush_queue()
-        if state._put_stream.empty():
+        session.put_flush_queue()
+        if session._put_stream.empty():
             return
-        with state.put_read() as view:
+        with session.put_read() as view:
             try:
                 size = comm.send(view)
             except (ssl.SSLWantReadError, ssl.SSLWantWriteError):
                 pass
             if size < len(view):
-                state._put_stream.unreadchunk(view[size:])
+                session._put_stream.unreadchunk(view[size:])
         self._put_commit(peer, size)
 
     def _close(self) -> None:

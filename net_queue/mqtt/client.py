@@ -5,11 +5,11 @@ from concurrent.futures import Future
 
 import paho.mqtt.client as mqtt_client
 
-from net_queue import client
-from net_queue import asynctools
+from net_queue.core import client
+from net_queue.utils import asynctools
 from net_queue.mqtt import Protocol
-from net_queue.stream import Stream
-from net_queue import CommunicatorOptions
+from net_queue.utils.stream import Stream
+from net_queue.core.comm import CommunicatorOptions
 
 
 __all__ = (
@@ -38,12 +38,12 @@ class Communicator(Protocol, client.Client[str]):
         """Broker message handler"""
         comm = self._peer(message)
         peer = self._set_default_peer(comm)
-        state = self._states[peer]
-        state._get_stream.write(message.payload)
+        session = self._sessions[peer]
+        session.get_write(message.payload)
         self._process_gets(peer)
-        peer = state.peer
+        peer = session.peer
 
-        if not state.status and state.put_empty():
+        if not session.state and session.put_empty():
             self._connection_fin(comm)
 
     def _put(self, stream: Stream, peer: uuid.UUID) -> Future[None]:
@@ -55,11 +55,11 @@ class Communicator(Protocol, client.Client[str]):
     def _c2s(self, comm: str):
         """Client to server communication"""
         peer = self._set_default_peer(comm)
-        state = self._states[peer]
+        session = self._sessions[peer]
 
         size = 0
-        state.put_flush_queue()
-        for view in state.put_flush_buffer():
+        session.put_flush_queue()
+        for view in session.put_flush_buffer():
             with view:
                 self._publish(f"c2s/{self.id.hex}", bytes(view))
                 size += len(view)

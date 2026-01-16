@@ -2,7 +2,6 @@
 
 import sys
 import copy
-import enum
 from pathlib import Path
 from argparse import ArgumentParser, Namespace
 
@@ -15,27 +14,13 @@ __all__ = ()
 MSG = "Hello, World!"
 
 
-class Peer(enum.StrEnum):
-    """Peer type"""
-    SERVER = enum.auto()
-    CLIENT = enum.auto()
-
-
-# Argument pasrser
-parser = ArgumentParser(prog="nq-test-api", description="net-queue API test")
-parser.add_argument("proto", choices=list(nq.Protocol), help="Which protocol to use")
-parser.add_argument("peer", choices=list(Peer), help="Which peer type to use")
-parser.add_argument("--size", type=int, default=1, help="Number of expected clients for the server")
-parser.add_argument("--secure", action="store_true", default=False, help="Enable secure communications")
-
-
 def get_options(config: Namespace) -> nq.CommunicatorOptions:
     """Get communicator options"""
     options = nq.CommunicatorOptions()
 
     if config.secure:
         security = nq.SecurityOptions(key=Path("key.pem"), certificate=Path("cert.pem"))
-        config.options = copy.replace(config.options, security=security)
+        options = copy.replace(config.options, security=security)
 
     return options
 
@@ -93,4 +78,9 @@ def main(config: Namespace):
 
 
 if __name__ == "__main__":
+    parser = ArgumentParser(prog="nq-test-api", description="net-queue API test")
+    parser.add_argument("proto", choices=list(nq.Protocol), help="Which protocol to use")
+    parser.add_argument("peer", choices=list(nq.Purpose), help="Which peer type to use")
+    parser.add_argument("--size", type=int, default=1, help="Number of expected clients for the server")
+    parser.add_argument("--secure", action="store_true", default=False, help="Enable secure communications")
     main(parser.parse_args())

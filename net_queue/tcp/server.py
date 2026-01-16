@@ -6,10 +6,10 @@ import socket
 import selectors
 from concurrent.futures import Future
 
-from net_queue import server
+from net_queue.core import server
 from net_queue.tcp import Protocol
-from net_queue.stream import Stream
-from net_queue import CommunicatorOptions, ResourceClosed
+from net_queue.utils.stream import Stream
+from net_queue.core.comm import CommunicatorOptions
 
 
 __all__ = (
@@ -47,9 +47,9 @@ class Communicator(Protocol, server.Server[socket.socket]):
         """Handle connection events"""
         # NOTE: communication thead
         peer = self._set_default_peer(comm)
-        state = self._states[peer]
+        session = self._sessions[peer]
 
-        if state.put_empty():
+        if session.put_empty():
             self._modify_selector(comm, selectors.EVENT_READ)
 
         if event & selectors.EVENT_WRITE:
@@ -58,12 +58,12 @@ class Communicator(Protocol, server.Server[socket.socket]):
         if event & selectors.EVENT_READ:
             self._handle_recv(comm)
 
-        if not state.put_empty():
+        if not session.put_empty():
             self._modify_selector(comm, selectors.EVENT_READ | selectors.EVENT_WRITE)
 
         self._notify_selector()
 
-        if not state.status and state.put_empty():
+        if not session.state and session.put_empty():
             self._connection_fin(comm)
 
     def _connection_pre_fin(self, peer: uuid.UUID) -> None:
@@ -78,8 +78,8 @@ class Communicator(Protocol, server.Server[socket.socket]):
         try:
             comm = self._comms[peer]
             future = super()._put(stream, peer)
-        except (KeyError, ResourceClosed):
-            raise ResourceClosed(peer)
+        except (KeyError, ConnectionError):
+            raise ConnectionResetError(peer)
         self._modify_selector(comm, selectors.EVENT_READ | selectors.EVENT_WRITE)
         return future
 

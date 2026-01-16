@@ -11,7 +11,7 @@ try:
 finally:
     sys.path.insert(0, _pkg)
 
-import net_queue as nq  # noqa: E402
+import net_queue.core.comm as nq  # noqa: E402
 
 __all__ = (
     "Protocol",
@@ -29,11 +29,11 @@ class Protocol[T](nq.Communicator[T]):
 
     def _put_flush(self, peer: uuid.UUID) -> abc.Generator[abc.Buffer]:
         """Transforms state to message"""
-        state = self._states[peer]
+        session = self._sessions[peer]
 
         size = 0
-        state.put_flush_queue()
-        for view in state.put_flush_buffer():
+        session.put_flush_queue()
+        for view in session.put_flush_buffer():
             with view:
                 yield bytes(view)
                 size += len(view)
