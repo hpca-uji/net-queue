@@ -84,8 +84,8 @@ pip install -e .
 
   Communication purpose
 
-  - `CLIENT`
   - `SERVER`
+  - `CLIENT`
 
 ### Structures
 - `CommunicatorOptions(...)`
