@@ -94,15 +94,14 @@ pip install -e .
 
   - `id: uuid.UUID = uuid.uuid4()` (random)
   - `netloc: NetworkLocation = NetworkLocation('127.0.0.1', 51966)`
+  - `connection: ConnectionOptions = ConnectionOptions()`
+  - `serialization: SerializationOptions = SerializationOptions()`
+  - `security: SecurityOptions | None = None`
   - `workers: int = 1`
 
     Maximum number of threads to use for connection handling.
     Depending on the protocol 1~3 more maybe used, however they will be idle most of the time.
     On high throughput applications or high latency networks this may need increasing.
-
-  - `connection: ConnectionOptions = ConnectionOptions()`
-  - `serialization: SerializationOptions = SerializationOptions()`
-  - `security: SecurityOptions | None = None`
 
 - `ConnectionOptions(...)`
 
