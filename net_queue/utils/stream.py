@@ -159,6 +159,8 @@ class Stream(io.BufferedIOBase):
 
     def tobytes(self) -> bytes:
         """Transform stream to bytes (will copy)"""
+        if self.empty():
+            return b""
         return self.read().tobytes()
 
     @classmethod
