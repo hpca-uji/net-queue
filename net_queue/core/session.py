@@ -31,20 +31,24 @@ class Session:
 
         # Get
         self._get_queue = SimpleQueue[Stream]()
-        self._get_buffer: memoryview | None = None
-        self._get_size = 0
         self._get_stream = Stream()
 
-        if not self._options.connection.get_merge:
+        if self._options.connection.get_merge:
+            self._get_buffer: memoryview | None = None
+            self._get_size = 0
+        else:
+            self._get_buffer = None
             self.get_optimize = lambda: None
 
         # Put
         self._put_queue = SimpleQueue[Stream]()
-        self._put_buffer = byteview(bytearray(self._options.connection.protocol_size))
-        self._put_size = min(self._options.connection.protocol_size, self._options.connection.efficient_size)
         self._put_stream = Stream()
 
-        if not self._options.connection.put_merge:
+        if self._options.connection.put_merge:
+            self._put_buffer = byteview(bytearray(self._options.connection.protocol_size))
+            self._put_size = min(self._options.connection.protocol_size, self._options.connection.efficient_size)
+        else:
+            self._put_buffer = None
             self.put_optimize = lambda: None
 
     def __repr__(self) -> str:
@@ -135,6 +139,7 @@ class Session:
         if self._put_stream.nchunks <= 1 or len(self._put_stream.peekchunk()) >= self._put_size:
             return
 
+        assert self._put_buffer is not None, "Put buffer missing!"
         merge_size = self._put_stream.readinto(self._put_buffer)
         self._put_stream.unreadchunk(self._put_buffer[:merge_size])
 
