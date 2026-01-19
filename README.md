@@ -113,34 +113,48 @@ pip install -e .
 
   - `get_merge: bool = True`
 
-    Merge message fragments to a contiguous memory block after receive.
+    Merge message chunks to a contiguous memory block after receive.
+
+    Merged chunks are up to `message_size` size,
+    internally a buffer of this size is dynamically allocated.
 
   - `put_merge: bool = True`
 
-    Merge message fragments to a contiguous memory block before send.
+    Merge message chunks to a contiguous memory block before send.
+
+    Merged chunks are up to `protocol_size` size,
+    internally a buffer of this size is preallocated.
 
   - `efficient_size: int = 64 * 1024 ** 1` (64 KiB)
 
-    Minimum message size to consider the send efficient before attempting merging.
-    If no more massages are queued then the message will be sent as-is.
+    Minimum chunk size to consider the send efficient before attempting merging.
+    If no more chunks are queued then the chunk will be sent as-is.
 
-    Selection: Amortize overhead of abstractions/syscalls/headers (less -latency, more +efficiency).
-    Default: Maximum TCP segment size.
+    Selection: Amortize abstractions costs (less +management, more +merging).  
+    Default: Maximum TCP segment size.  
 
   - `protocol_size: int = 4 * 1024 ** 2` (4 MiB)
 
-    Maximum message size to send to underlying protocol before splitting.
+    Maximum chunk size to send to underlying protocol before splitting.
 
-    Selection: Bandwidth-delay product of network (less +streaming, more +bursty).
-    Default: Typical connection (80Mbps @ 50ms).
+    Selection: Bandwidth-delay product of network (less +streaming/CPU, more +bursty/RAM).  
+    Default: Typical connection (80Mbps @ 50ms) & balanced RAM/CPU usage.  
 
   - `queue_size: int = 1 ** 1024 ** 3` (1 GiM)
 
     Maximum queued up messages before dropping incoming messages.
 
+    Selection: Maximum according to memory limits.
+    Default: Unlimited for typical usage.  
+
   - `message_size: int = 1 ** 1024 * 4` (1 TiB)
 
     Maximum message size to deserialize before attempting splitting.
+    If the deserializer does not supports arbitrary sub-chunks,
+    this setting may raise exceptions on message extraction.
+
+    Selection: Maximum according to memory limits.
+    Default: Unlimited for typical usage.  
 
 - `SerializationOptions(...)`
 
