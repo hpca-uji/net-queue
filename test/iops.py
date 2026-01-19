@@ -98,6 +98,8 @@ def server(config: Namespace):
     with nq.new(protocol=config.proto, purpose=nq.Purpose.SERVER, options=get_options(config)) as server:
         get_thread = Thread(target=get, args=(server, messages * config.clients))
         put_thread = Thread(target=put, args=(server, messages))
+        print(server)
+
         for _ in range(config.clients):
             server.get()
         server.put(None)
@@ -128,6 +130,8 @@ def client(config: Namespace):
     with nq.new(protocol=config.proto, purpose=nq.Purpose.CLIENT, options=get_options(config)) as client:
         get_thread = Thread(target=get, args=(client, messages))
         put_thread = Thread(target=put, args=(client, messages))
+        print(client)
+
         client.put(None)
         client.get()
         start_time = time.perf_counter()
