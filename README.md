@@ -103,6 +103,9 @@ pip install -e .
     Depending on the protocol 1~3 more maybe used, however they will be idle most of the time.
     On high throughput applications or high latency networks this may need increasing.
 
+    Selection: Number of expected participants (less +efficiency, more +performance).  
+    Default: Minimum required resources.  
+
 - `ConnectionOptions(...)`
 
   Connection options
