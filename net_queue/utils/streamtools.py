@@ -1,9 +1,9 @@
 """Stream utilities"""
 
 import pickle
-import struct
 import warnings
 import functools
+from struct import Struct
 from collections import abc
 
 from net_queue.utils.stream import Stream, byteview
@@ -38,36 +38,35 @@ class Packer:
     # TODO: Use uintvar (VLQ) instead of uint64 in packer
 
     __slots__ = ()
-    _format_size = "!Q"
-    _sizeof_size = struct.calcsize(_format_size)
+    _header = Struct("!Q")
 
     def unpack_header(self, transport: Stream) -> int:
         """Extracts header from packer (raises BlockingIOError if no stream)"""
         # Check if size available
-        rb = self._sizeof_size
+        rb = self._header.size
         if transport.nbytes < rb:
             raise BlockingIOError()
 
         # Read size
         with transport.read(rb) as chunk:
-            return struct.unpack(self._format_size, chunk)[0]
+            return self._header.unpack(chunk)[0]
 
     def pack_header(self, transport: Stream, size: int) -> int:
         """Inserts header into packer, returns bytes written"""
-        pack = struct.pack(self._format_size, size)
+        pack = self._header.pack(size)
         size = transport.write(pack)
         return size
 
     def unpack(self, transport: Stream, size: int = -1) -> Stream:
         """Extracts stream from packer (raises BlockingIOError if no stream)"""
         # Check if size available
-        rb = self._sizeof_size
+        rb = self._header.size
         if transport.nbytes < rb:
             raise BlockingIOError()
 
         # Read size
         chunk = transport.read(rb)
-        rb = struct.unpack(self._format_size, chunk)[0]
+        rb = self._header.unpack(chunk)[0]
 
         # Compute limits
         if size >= 0 and size < rb:
@@ -93,7 +92,7 @@ class Packer:
         # Write truncated header
         if extra > 0:
             warnings.warn("Truncated stream!", ResourceWarning)
-            pack = struct.pack(self._format_size, extra)
+            pack = self._header.pack(extra)
             transport.unreadchunk(byteview(pack))
 
         # Return stream
@@ -103,7 +102,7 @@ class Packer:
         """Inserts stream into packer, returns bytes written"""
         # Ensure contained writes
         wb = data.nbytes
-        pack = struct.pack(self._format_size, wb)
+        pack = self._header.pack(wb)
         wb += transport.write(pack)
         transport.writechunks(data.readchunks())
         return wb
