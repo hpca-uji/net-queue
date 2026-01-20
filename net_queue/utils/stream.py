@@ -39,7 +39,7 @@ class Stream(io.BufferedIOBase):
     """
     Zero-copy non-blocking pipe-like
 
-    Interface mimics a non-blocking BufferedRandom,
+    Interface mimics a non-blocking BufferedIOBase,
     but operations return memoryviews instead of bytes.
 
     Operations are not thread-safe.
