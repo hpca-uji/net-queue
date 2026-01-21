@@ -16,7 +16,7 @@ MSG = "Hello, World!"
 
 def get_options(config: Namespace) -> nq.CommunicatorOptions:
     """Get communicator options"""
-    options = nq.CommunicatorOptions()
+    options = nq.CommunicatorOptions(workers=config.workers)
 
     if config.secure:
         security = nq.SecurityOptions(key=Path("key.pem"), certificate=Path("cert.pem"))
@@ -32,7 +32,7 @@ def server(config: Namespace):
     server = nq.new(protocol=config.proto, purpose=nq.Purpose.SERVER, options=get_options(config))
     print(server)
 
-    for _ in range(config.size):
+    for _ in range(config.clients):
         client_msg = server.get()
         print(f"{server.id}-c2s: {client_msg}")
         clients.add(client_msg.peer)
@@ -81,6 +81,7 @@ if __name__ == "__main__":
     parser = ArgumentParser(prog="nq-test-api", description="net-queue API test")
     parser.add_argument("proto", choices=list(nq.Protocol), help="Which protocol to use")
     parser.add_argument("peer", choices=list(nq.Purpose), help="Which peer type to use")
-    parser.add_argument("--size", type=int, default=1, help="Number of expected clients for the server")
+    parser.add_argument("--clients", type=int, default=1, help="Number of expected clients for the server")
+    parser.add_argument("--workers", type=int, default=1, help="Number of workers to use")
     parser.add_argument("--secure", action="store_true", default=False, help="Enable secure communications")
     main(parser.parse_args())

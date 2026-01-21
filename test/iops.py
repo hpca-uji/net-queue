@@ -26,7 +26,7 @@ class Mode(enum.StrEnum):
 
 def get_options(config: Namespace) -> nq.CommunicatorOptions:
     """Get communicator options"""
-    options = nq.CommunicatorOptions()
+    options = nq.CommunicatorOptions(workers=config.workers)
 
     if config.secure:
         security = nq.SecurityOptions(key=Path("key.pem"), certificate=Path("cert.pem"))
@@ -174,5 +174,6 @@ if __name__ == "__main__":
     parser.add_argument("--step-expo", type=float, default=0.5, help="Exponent of number of splits when stepping down a size")
     parser.add_argument("--reps", type=int, default=1, help="Number of repetitions of messages")
     parser.add_argument("--clients", type=int, default=1, help="Number of expected clients for the server")
+    parser.add_argument("--workers", type=int, default=1, help="Number of workers to use")
     parser.add_argument("--secure", action="store_true", default=False, help="Enable secure communications")
     main(parser.parse_args())
