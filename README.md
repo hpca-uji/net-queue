@@ -23,6 +23,7 @@ with nq.new(purpose=nq.Purpose.CLIENT) as queue:
 ## Benchmark
 | Configuration | Used |
 |-|-|
+| SW | Python 3.13.5 |
 | OS | Debian GNU/Linux 13 (trixie) |
 | CPU | 13th Gen Intel® Core™ i5-13400 × 16 |
 | RAM | 64 GB |
