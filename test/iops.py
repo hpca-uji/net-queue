@@ -4,7 +4,6 @@ import sys
 import math
 import time
 import enum
-import copy
 import random
 from pathlib import Path
 from threading import Thread
@@ -26,13 +25,19 @@ class Mode(enum.StrEnum):
 
 def get_options(config: Namespace) -> nq.CommunicatorOptions:
     """Get communicator options"""
-    options = nq.CommunicatorOptions(workers=config.workers)
-
-    if config.secure:
-        security = nq.SecurityOptions(key=Path("key.pem"), certificate=Path("cert.pem"))
-        options = copy.replace(config.options, security=security)
-
-    return options
+    return nq.CommunicatorOptions(
+        connection=nq.ConnectionOptions(
+            get_merge=config.get_merge,
+            put_merge=config.put_merge,
+            efficient_size=config.efficient_size,
+            protocol_size=config.protocol_size,
+        ),
+        security=nq.SecurityOptions(
+            key=Path("key.pem"),
+            certificate=Path("cert.pem")
+        ) if config.secure else None,
+        workers=config.workers
+    )
 
 
 def get(comm: nq.Communicator, msgs: list[bytearray]):
@@ -163,6 +168,7 @@ def main(config: Namespace):
 
 
 if __name__ == "__main__":
+    config = nq.CommunicatorOptions()
     parser = ArgumentParser(prog="nq-test-iops", description="net-queue IOPS test")
     parser.add_argument("proto", choices=list(nq.Protocol), help="Which protocol to use")
     parser.add_argument("peer", choices=list(nq.Purpose), help="Which peer type to use")
@@ -174,6 +180,10 @@ if __name__ == "__main__":
     parser.add_argument("--step-expo", type=float, default=0.5, help="Exponent of number of splits when stepping down a size")
     parser.add_argument("--reps", type=int, default=1, help="Number of repetitions of messages")
     parser.add_argument("--clients", type=int, default=1, help="Number of expected clients for the server")
-    parser.add_argument("--workers", type=int, default=1, help="Number of workers to use")
+    parser.add_argument("--get-merge", type=bool, default=config.connection.get_merge, help="Enable get stream merging")
+    parser.add_argument("--put-merge", type=bool, default=config.connection.put_merge, help="Enable put stream merging")
+    parser.add_argument("--protocol-size", type=int, default=config.connection.protocol_size, help="Maximum put message size")
+    parser.add_argument("--efficient-size", type=int, default=config.connection.efficient_size, help="Get merge size threshold")
     parser.add_argument("--secure", action="store_true", default=False, help="Enable secure communications")
+    parser.add_argument("--workers", type=int, default=config.workers, help="Number of workers to use")
     main(parser.parse_args())
