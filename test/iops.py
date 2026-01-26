@@ -26,6 +26,10 @@ class Mode(enum.StrEnum):
 def get_options(config: Namespace) -> nq.CommunicatorOptions:
     """Get communicator options"""
     return nq.CommunicatorOptions(
+        netloc=nq.NetworkLocation(
+            host=config.host,
+            port=config.port,
+        ),
         connection=nq.ConnectionOptions(
             get_merge=config.get_merge,
             put_merge=config.put_merge,
@@ -180,6 +184,8 @@ if __name__ == "__main__":
     parser.add_argument("--step-expo", type=float, default=0.5, help="Exponent of number of splits when stepping down a size")
     parser.add_argument("--reps", type=int, default=1, help="Number of repetitions of messages")
     parser.add_argument("--clients", type=int, default=1, help="Number of expected clients for the server")
+    parser.add_argument("--host", type=str, default=config.netloc.host, help="Host address to bind or connect to")
+    parser.add_argument("--port", type=int, default=config.netloc.port, help="Host port to bind or connect to")
     parser.add_argument("--get-merge", type=bool, default=config.connection.get_merge, help="Enable get stream merging")
     parser.add_argument("--put-merge", type=bool, default=config.connection.put_merge, help="Enable put stream merging")
     parser.add_argument("--protocol-size", type=int, default=config.connection.protocol_size, help="Maximum put message size")
