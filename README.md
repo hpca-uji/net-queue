@@ -117,14 +117,16 @@ pip install -e .
 
   - `get_merge: bool = True`
 
-    Merge message chunks to a contiguous memory block after receive.
+    Merge message chunks to a contiguous memory block during receiving,
+    this typically improves performance when processing large messages.
 
     Merged chunks are up to `message_size` size,
     internally a buffer of this size is dynamically allocated.
 
   - `put_merge: bool = True`
 
-    Merge message chunks to a contiguous memory block before send.
+    Merge message chunks to a contiguous memory block during sending,
+    this typically improves performance when processing small messages.
 
     Merged chunks are up to `protocol_size` size,
     internally a buffer of this size is preallocated.
