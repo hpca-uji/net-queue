@@ -14,7 +14,7 @@ from net_queue.utils.asynctools import thread_func
 
 
 __all__ = (
-    "Protocol",
+    "Transport",
 )
 
 
@@ -26,7 +26,7 @@ CONTROL_STOP = object()
 CONTROL_EVENT = b"\0"
 
 
-class Protocol(nq.Communicator[socket.socket]):
+class Transport(nq.Communicator[socket.socket]):
     """Shared base TCP implementation"""
 
     def __init__(self, options: nq.CommunicatorOptions = nq.CommunicatorOptions()) -> None:
@@ -77,7 +77,7 @@ class Protocol(nq.Communicator[socket.socket]):
 
     def _handle_control_socket(self, sock: socket.socket, mask):
         """Handle selector notification"""
-        if len(sock.recv(self.options.connection.protocol_size)) == 0:
+        if len(sock.recv(self.options.connection.transport_size)) == 0:
             return CONTROL_STOP
 
         # Handle tasks
@@ -130,7 +130,7 @@ class Protocol(nq.Communicator[socket.socket]):
                 session.get_optimize()
         else:
             try:
-                data = comm.recv(self.options.connection.protocol_size)
+                data = comm.recv(self.options.connection.transport_size)
             except (BlockingIOError, ssl.SSLWantReadError, ssl.SSLWantWriteError):
                 return
             else:

@@ -34,7 +34,7 @@ def get_options(config: Namespace) -> nq.CommunicatorOptions:
             get_merge=config.get_merge,
             put_merge=config.put_merge,
             efficient_size=config.efficient_size,
-            protocol_size=config.protocol_size,
+            transport_size=config.protocol_size,
         ),
         security=nq.SecurityOptions(
             key=Path("key.pem"),
@@ -104,7 +104,7 @@ def server(config: Namespace):
     messages = generate(config)
     sizes = list(map(len, messages)) * config.clients
 
-    with nq.new(protocol=config.proto, purpose=nq.Purpose.SERVER, options=get_options(config)) as server:
+    with nq.new(backend=config.backend, purpose=nq.Purpose.SERVER, options=get_options(config)) as server:
         get_thread = Thread(target=get, args=(server, messages * config.clients))
         put_thread = Thread(target=put, args=(server, messages))
         print(server)
@@ -136,7 +136,7 @@ def client(config: Namespace):
     messages = generate(config)
     sizes = list(map(len, messages)) * config.clients
 
-    with nq.new(protocol=config.proto, purpose=nq.Purpose.CLIENT, options=get_options(config)) as client:
+    with nq.new(backend=config.backend, purpose=nq.Purpose.CLIENT, options=get_options(config)) as client:
         get_thread = Thread(target=get, args=(client, messages))
         put_thread = Thread(target=put, args=(client, messages))
         print(client)
@@ -174,7 +174,7 @@ def main(config: Namespace):
 if __name__ == "__main__":
     config = nq.CommunicatorOptions()
     parser = ArgumentParser(prog="nq-test-iops", description="net-queue IOPS test")
-    parser.add_argument("proto", choices=list(nq.Protocol), help="Which protocol to use")
+    parser.add_argument("backend", choices=list(nq.Backend), help="Which backend to use")
     parser.add_argument("peer", choices=list(nq.Purpose), help="Which peer type to use")
     parser.add_argument("mode", choices=list(Mode), help="Which operation mode to use")
     parser.add_argument("--delay", type=float, default=0.0, help="Time to wait before reception start (to cause buffering)")
@@ -188,8 +188,8 @@ if __name__ == "__main__":
     parser.add_argument("--port", type=int, default=config.netloc.port, help="Host port to bind or connect to")
     parser.add_argument("--get-merge", type=bool, default=config.connection.get_merge, help="Enable get stream merging")
     parser.add_argument("--put-merge", type=bool, default=config.connection.put_merge, help="Enable put stream merging")
-    parser.add_argument("--protocol-size", type=int, default=config.connection.protocol_size, help="Maximum put message size")
-    parser.add_argument("--efficient-size", type=int, default=config.connection.efficient_size, help="Get merge size threshold")
+    parser.add_argument("--transport-size", type=int, default=config.connection.transport_size, help="Maximum put message size")
+    parser.add_argument("--efficient-size", type=int, default=config.connection.efficient_size, help="Put merge size threshold")
     parser.add_argument("--secure", action="store_true", default=False, help="Enable secure communications")
     parser.add_argument("--workers", type=int, default=config.workers, help="Number of workers to use")
     main(parser.parse_args())

@@ -7,7 +7,7 @@ import paho.mqtt.client as mqtt_client
 
 from net_queue.core import server
 from net_queue.utils import asynctools
-from net_queue.mqtt import Protocol
+from net_queue.phao_mqtt import Transport
 from net_queue.utils.stream import Stream
 from net_queue.core.comm import CommunicatorOptions
 
@@ -21,7 +21,7 @@ __all__ = (
 END_COMM = b""
 
 
-class Communicator(Protocol, server.Server[str]):
+class Communicator(Transport, server.Server[str]):
     """MQTT server"""
 
     def __init__(self, options: CommunicatorOptions = CommunicatorOptions()) -> None:

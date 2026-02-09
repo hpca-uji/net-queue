@@ -45,8 +45,8 @@ class Session:
         self._put_stream = Stream()
 
         if self._options.connection.put_merge:
-            self._put_buffer = byteview(bytearray(self._options.connection.protocol_size))
-            self._put_size = min(self._options.connection.protocol_size, self._options.connection.efficient_size)
+            self._put_buffer = byteview(bytearray(self._options.connection.transport_size))
+            self._put_size = min(self._options.connection.transport_size, self._options.connection.efficient_size)
         else:
             self._put_buffer = None
             self.put_optimize = lambda: None
@@ -97,7 +97,7 @@ class Session:
     def put_read(self) -> memoryview:
         """Read put buffer"""
         self.put_optimize()
-        b = self._put_stream.read1(self._options.connection.protocol_size)
+        b = self._put_stream.read1(self._options.connection.transport_size)
         return b
 
     def get_optimize(self) -> None:

@@ -59,7 +59,7 @@ class ConnectionOptions:
     get_merge: bool = True
     put_merge: bool = True
     efficient_size: int = 64 * 1024 ** 1
-    protocol_size: int = 4 * 1024 ** 2
+    transport_size: int = 4 * 1024 ** 2
     queue_size: int = 1 * 1024 ** 3
     message_size: int = 1 * 1024 ** 4
 

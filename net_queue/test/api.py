@@ -24,7 +24,7 @@ def get_options(config: Namespace) -> nq.CommunicatorOptions:
             get_merge=config.get_merge,
             put_merge=config.put_merge,
             efficient_size=config.efficient_size,
-            protocol_size=config.protocol_size,
+            transport_size=config.protocol_size,
         ),
         security=nq.SecurityOptions(
             key=Path("key.pem"),
@@ -38,7 +38,7 @@ def server(config: Namespace):
     """Server mode"""
     clients = set()
     server_msg = MSG
-    server = nq.new(protocol=config.proto, purpose=nq.Purpose.SERVER, options=get_options(config))
+    server = nq.new(backend=config.backend, purpose=nq.Purpose.SERVER, options=get_options(config))
     print(server)
 
     for _ in range(config.clients):
@@ -60,7 +60,7 @@ def server(config: Namespace):
 def client(config: Namespace):
     """Client mode"""
     client_msg = MSG
-    client = nq.new(protocol=config.proto, purpose=nq.Purpose.CLIENT, options=get_options(config))
+    client = nq.new(backend=config.backend, purpose=nq.Purpose.CLIENT, options=get_options(config))
     print(client)
 
     print(f"{client.id}-c2s: {client_msg}")
@@ -89,15 +89,15 @@ def main(config: Namespace):
 if __name__ == "__main__":
     config = nq.CommunicatorOptions()
     parser = ArgumentParser(prog="nq-test-api", description="net-queue API test")
-    parser.add_argument("proto", choices=list(nq.Protocol), help="Which protocol to use")
+    parser.add_argument("backend", choices=list(nq.Backend), help="Which backend to use")
     parser.add_argument("peer", choices=list(nq.Purpose), help="Which peer type to use")
     parser.add_argument("--clients", type=int, default=1, help="Number of expected clients for the server")
     parser.add_argument("--host", type=str, default=config.netloc.host, help="Host address to bind or connect to")
     parser.add_argument("--port", type=int, default=config.netloc.port, help="Host port to bind or connect to")
     parser.add_argument("--get-merge", type=bool, default=config.connection.get_merge, help="Enable get stream merging")
     parser.add_argument("--put-merge", type=bool, default=config.connection.put_merge, help="Enable put stream merging")
-    parser.add_argument("--protocol-size", type=int, default=config.connection.protocol_size, help="Maximum put message size")
-    parser.add_argument("--efficient-size", type=int, default=config.connection.efficient_size, help="Get merge size threshold")
+    parser.add_argument("--transport-size", type=int, default=config.connection.transport_size, help="Maximum put message size")
+    parser.add_argument("--efficient-size", type=int, default=config.connection.efficient_size, help="Put merge size threshold")
     parser.add_argument("--secure", action="store_true", default=False, help="Enable secure communications")
     parser.add_argument("--workers", type=int, default=config.workers, help="Number of workers to use")
     main(parser.parse_args())

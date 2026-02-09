@@ -30,29 +30,29 @@ with nq.new(purpose=nq.Purpose.CLIENT) as queue:
 
 | Test | Transfer | Operations | Executed |
 |-|-|-|-|
-| Sync | 17.18 GB | 8.0 K | python test/iops.py proto peer sync --step-size 0 --max-size 21 --reps 4_000 |
-| Async | 17.18 GB | 8.0 K | python test/iops.py proto peer async --step-size 0 --max-size 21 --reps 4_000 |
-| Mix | 8.59 GB | 8.19 K | python test/iops.py proto peer async --min-size 8 --step-size 2 --step-expo 0.5 --max-size 32 |
+| Sync | 17.18 GB | 8.0 K | python test/iops.py backend peer sync --step-size 0 --max-size 21 --reps 4_000 |
+| Async | 17.18 GB | 8.0 K | python test/iops.py backend peer async --step-size 0 --max-size 21 --reps 4_000 |
+| Mix | 8.59 GB | 8.19 K | python test/iops.py backend peer async --min-size 8 --step-size 2 --step-expo 0.5 --max-size 32 |
 
-| Time | TCP | MQTT | gRPC |
+| Time | Socket TCP | Phao MQTT | gRPC IO |
 |-|-|-|-|
 | Sync | 5.3 s | 36.2 s | 23.1 s |
 | Async | 8.5 s | 27.0 s | 20.9 s |
 | Mix | 9.2 s | 23.8 s | 20.2 s |
 
-| Transfer | TCP | MQTT | gRPC |
+| Transfer | Socket TCP | Phao MQTT | gRPC IO |
 |-|-|-|-|
 | Sync | 25.24 Gbps | 3.71 Gbps | 5.81 Gbps |
 | Async | 15.77 Gbps | 4.98 Gbps | 6.43 Gbps |
 | Mix | 14.91 Gbps | 5.78 Gbps | 6.79 Gbps |
 
-| Operations | TCP | MQTT | gRPC |
+| Operations | Socket TCP | Phao MQTT | gRPC IO |
 |-|-|-|-|
 | Sync | 1500.00 IOPS | 220.85 IOPS | 346.37 IOPS |
 | Async | 939.73 IOPS | 296.78 IOPS | 383.04 IOPS |
 | Mix | 1780.00 IOPS | 689.41 IOPS | 809.01 IOPS |
 
-| Memory | TCP | MQTT | gRPC |
+| Memory | Socket TCP | Phao MQTT | gRPC IO |
 |-|-|-|-|
 | Sync | 21.94 MB | 8377.33 MB | 30.68 MB |
 | Async | 33.39 MB | 7585.78 MB | 41.46 MB |
@@ -73,13 +73,13 @@ pip install -e .
 
 ## Documentation
 ### Constants
-- `Protocol`:
+- `Backend`:
 
-  Communication protocol
+  Communication backend
 
-  - `TCP`
-  - `MQTT` (requires external broker)
-  - `GRPC`
+  - `SOCKET_TCP`
+  - `PHAO_MQTT` (requires external broker)
+  - `GRPCIO`
 
 - `Purpose`:
 
@@ -128,7 +128,7 @@ pip install -e .
     Merge message chunks to a contiguous memory block during sending,
     this typically improves performance when processing small messages.
 
-    Merged chunks are up to `protocol_size` size,
+    Merged chunks are up to `transport_size` size,
     internally a buffer of this size is preallocated.
 
   - `efficient_size: int = 64 * 1024 ** 1` (64 KiB)
@@ -139,9 +139,9 @@ pip install -e .
     Selection: Amortize abstractions costs (less +management, more +merging).  
     Default: Maximum TCP segment size.  
 
-  - `protocol_size: int = 4 * 1024 ** 2` (4 MiB)
+  - `transport_size: int = 4 * 1024 ** 2` (4 MiB)
 
-    Maximum chunk size to send to underlying protocol before splitting.
+    Maximum chunk size to send to underlying backend before splitting.
 
     Selection: Bandwidth-delay product of network (less +streaming/CPU, more +bursty/RAM).  
     Default: Typical connection (80Mbps @ 50ms) & balanced RAM/CPU usage.  
@@ -200,11 +200,11 @@ pip install -e .
   - `port: int = 51966`
 
 ### Functions
-- `new(protocol, purpose, options)`
+- `new(backend, purpose, options)`
 
   Create a communicator.
 
-  - `protocol: Protocol = Purpose.TCP`
+  - `backend: Backend = Backend.SOCKET_TCP`
   - `purpose: Purpose = Purpose.Client`
   - `options: CommunicatorOptions = CommunicatorOptions()`
 
@@ -252,7 +252,7 @@ pip install -e .
 
     Close the communicator
 
-- `{protocol}.{purpose}.Communicator(options)`
+- `{backend}.{purpose}.Communicator(options)`
 
   Concrete communicator implementation for the given protocol and purpose
 
@@ -422,11 +422,11 @@ Close
 - Always block
 - Server waits for peers to disconnect
 
-### TCP
+### Socket TCP
 Library: socket  
 Parallelism: Thread pool (n+1+1 threads)  
 
-### MQTT
+### Phao MQTT
 Library: paho-mqtt  
 Options: tcp transport, 0 QOS, 3.1.1 protocol  
 Parallelism: Single threaded (1+1+1 threads)  
@@ -439,7 +439,7 @@ Peer-groups and global communications are not optimized.
 
 First, chunked message ordering must be resolved. Single chunk order it is guaranteed by the protocol, even on with different topics. Second, peer-groups could be implemented using grouping requests that generate new UUID per group. This would reduce also reduce load on the broker.
 
-### gRPC
+### gRPC IO
 Library: grpcio  
 Options: compression disabled, protobuf disabled  
 Parallelism: Thread pool (n+1+? threads)  

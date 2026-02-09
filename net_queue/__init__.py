@@ -8,7 +8,7 @@ from net_queue.core import CommunicatorOptions, NetworkLocation, ConnectionOptio
 
 
 __all__ = (
-    "Protocol",
+    "Backend",
     "Purpose",
     "CommunicatorOptions",
     "NetworkLocation",
@@ -20,11 +20,11 @@ __all__ = (
 )
 
 
-class Protocol(enum.StrEnum):
-    """Communication protocol"""
-    TCP = enum.auto()
-    MQTT = enum.auto()
-    GRPC = enum.auto()
+class Backend(enum.StrEnum):
+    """Communication backend"""
+    SOCKET_TCP = enum.auto()
+    PHAO_MQTT = enum.auto()
+    GRPCIO = enum.auto()
 
 
 class Purpose(enum.StrEnum):
@@ -33,8 +33,8 @@ class Purpose(enum.StrEnum):
     CLIENT = enum.auto()
 
 
-def new(protocol: Protocol = Protocol.TCP, purpose: Purpose = Purpose.CLIENT, options: CommunicatorOptions = CommunicatorOptions()) -> Communicator:
+def new(backend: Backend = Backend.SOCKET_TCP, purpose: Purpose = Purpose.CLIENT, options: CommunicatorOptions = CommunicatorOptions()) -> Communicator:
     """Generate communicator"""
-    module = importlib.import_module(f"{__name__}.{protocol}.{purpose}")
+    module = importlib.import_module(f"{__name__}.{backend}.{purpose}")
     cls: type[Communicator] = getattr(module, "Communicator")
     return cls(options)
