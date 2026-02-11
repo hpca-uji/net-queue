@@ -11,7 +11,7 @@ from net_queue.utils.asynctools import thread_queue
 
 
 __all__ = (
-    "Transport",
+    "Protocol",
 )
 
 
@@ -19,7 +19,7 @@ __all__ = (
 ARG_MISSING = object()
 
 
-class Transport(nq.Communicator[str]):
+class Protocol(nq.Communicator[str]):
     """Shared base MQTT implementation"""
 
     _qos = 0

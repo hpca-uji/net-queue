@@ -14,7 +14,7 @@ from net_queue.utils.asynctools import thread_func
 
 
 __all__ = (
-    "Transport",
+    "Protocol",
 )
 
 
@@ -26,7 +26,7 @@ CONTROL_STOP = object()
 CONTROL_EVENT = b"\0"
 
 
-class Transport(nq.Communicator[socket.socket]):
+class Protocol(nq.Communicator[socket.socket]):
     """Shared base TCP implementation"""
 
     def __init__(self, options: nq.CommunicatorOptions = nq.CommunicatorOptions()) -> None:

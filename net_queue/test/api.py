@@ -24,7 +24,7 @@ def get_options(config: Namespace) -> nq.CommunicatorOptions:
             get_merge=config.get_merge,
             put_merge=config.put_merge,
             efficient_size=config.efficient_size,
-            transport_size=config.protocol_size,
+            transport_size=config.transport_size,
         ),
         security=nq.SecurityOptions(
             key=Path("key.pem"),
@@ -38,7 +38,7 @@ def server(config: Namespace):
     """Server mode"""
     clients = set()
     server_msg = MSG
-    server = nq.new(backend=config.backend, purpose=nq.Purpose.SERVER, options=get_options(config))
+    server = nq.new(protocol=config.protocol, purpose=nq.Purpose.SERVER, options=get_options(config))
     print(server)
 
     for _ in range(config.clients):
@@ -60,7 +60,7 @@ def server(config: Namespace):
 def client(config: Namespace):
     """Client mode"""
     client_msg = MSG
-    client = nq.new(backend=config.backend, purpose=nq.Purpose.CLIENT, options=get_options(config))
+    client = nq.new(protocol=config.protocol, purpose=nq.Purpose.CLIENT, options=get_options(config))
     print(client)
 
     print(f"{client.id}-c2s: {client_msg}")
@@ -81,7 +81,7 @@ def client(config: Namespace):
 def main(config: Namespace):
     """Application entrypoint"""
     self = sys.modules[__name__]
-    handler = getattr(self, config.peer)
+    handler = getattr(self, config.purpose)
     print(config)
     handler(config)
 
@@ -89,8 +89,8 @@ def main(config: Namespace):
 if __name__ == "__main__":
     config = nq.CommunicatorOptions()
     parser = ArgumentParser(prog="nq-test-api", description="net-queue API test")
-    parser.add_argument("backend", choices=list(nq.Backend), help="Which backend to use")
-    parser.add_argument("peer", choices=list(nq.Purpose), help="Which peer type to use")
+    parser.add_argument("protocol", choices=list(nq.Protocol), help="Which backend to use")
+    parser.add_argument("purpose", choices=list(nq.Purpose), help="Which peer type to use")
     parser.add_argument("--clients", type=int, default=1, help="Number of expected clients for the server")
     parser.add_argument("--host", type=str, default=config.netloc.host, help="Host address to bind or connect to")
     parser.add_argument("--port", type=int, default=config.netloc.port, help="Host port to bind or connect to")

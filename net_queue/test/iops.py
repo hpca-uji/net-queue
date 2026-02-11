@@ -34,7 +34,7 @@ def get_options(config: Namespace) -> nq.CommunicatorOptions:
             get_merge=config.get_merge,
             put_merge=config.put_merge,
             efficient_size=config.efficient_size,
-            transport_size=config.protocol_size,
+            transport_size=config.transport_size,
         ),
         security=nq.SecurityOptions(
             key=Path("key.pem"),
@@ -104,7 +104,7 @@ def server(config: Namespace):
     messages = generate(config)
     sizes = list(map(len, messages)) * config.clients
 
-    with nq.new(backend=config.backend, purpose=nq.Purpose.SERVER, options=get_options(config)) as server:
+    with nq.new(protocol=config.protocol, purpose=nq.Purpose.SERVER, options=get_options(config)) as server:
         get_thread = Thread(target=get, args=(server, messages * config.clients))
         put_thread = Thread(target=put, args=(server, messages))
         print(server)
@@ -136,7 +136,7 @@ def client(config: Namespace):
     messages = generate(config)
     sizes = list(map(len, messages)) * config.clients
 
-    with nq.new(backend=config.backend, purpose=nq.Purpose.CLIENT, options=get_options(config)) as client:
+    with nq.new(protocol=config.protocol, purpose=nq.Purpose.CLIENT, options=get_options(config)) as client:
         get_thread = Thread(target=get, args=(client, messages))
         put_thread = Thread(target=put, args=(client, messages))
         print(client)
@@ -165,7 +165,7 @@ def client(config: Namespace):
 def main(config: Namespace):
     """Application entrypoint"""
     self = sys.modules[__name__]
-    handler = getattr(self, config.peer)
+    handler = getattr(self, config.purpose)
     print(config)
     random.seed(0)
     handler(config)
@@ -174,8 +174,8 @@ def main(config: Namespace):
 if __name__ == "__main__":
     config = nq.CommunicatorOptions()
     parser = ArgumentParser(prog="nq-test-iops", description="net-queue IOPS test")
-    parser.add_argument("backend", choices=list(nq.Backend), help="Which backend to use")
-    parser.add_argument("peer", choices=list(nq.Purpose), help="Which peer type to use")
+    parser.add_argument("protocol", choices=list(nq.Protocol), help="Which backend to use")
+    parser.add_argument("purpose", choices=list(nq.Purpose), help="Which peer type to use")
     parser.add_argument("mode", choices=list(Mode), help="Which operation mode to use")
     parser.add_argument("--delay", type=float, default=0.0, help="Time to wait before reception start (to cause buffering)")
     parser.add_argument("--min-size", type=int, default=8, help="Exponent of minimum message size")

@@ -30,29 +30,29 @@ with nq.new(purpose=nq.Purpose.CLIENT) as queue:
 
 | Test | Transfer | Operations | Executed |
 |-|-|-|-|
-| Sync | 17.18 GB | 8.0 K | python test/iops.py backend peer sync --step-size 0 --max-size 21 --reps 4_000 |
-| Async | 17.18 GB | 8.0 K | python test/iops.py backend peer async --step-size 0 --max-size 21 --reps 4_000 |
-| Mix | 8.59 GB | 8.19 K | python test/iops.py backend peer async --min-size 8 --step-size 2 --step-expo 0.5 --max-size 32 |
+| Sync | 17.18 GB | 8.0 K | python test/iops.py protocol purpose sync --step-size 0 --max-size 21 --reps 4_000 |
+| Async | 17.18 GB | 8.0 K | python test/iops.py protocol purpose async --step-size 0 --max-size 21 --reps 4_000 |
+| Mix | 8.59 GB | 8.19 K | python test/iops.py protocol purpose async --min-size 8 --step-size 2 --step-expo 0.5 --max-size 32 |
 
-| Time | Socket TCP | Phao MQTT | gRPC IO |
+| Time | TCP | MQTT | gRPC |
 |-|-|-|-|
 | Sync | 5.3 s | 36.2 s | 23.1 s |
 | Async | 8.5 s | 27.0 s | 20.9 s |
 | Mix | 9.2 s | 23.8 s | 20.2 s |
 
-| Transfer | Socket TCP | Phao MQTT | gRPC IO |
+| Transfer | TCP | MQTT | gRPC |
 |-|-|-|-|
 | Sync | 25.24 Gbps | 3.71 Gbps | 5.81 Gbps |
 | Async | 15.77 Gbps | 4.98 Gbps | 6.43 Gbps |
 | Mix | 14.91 Gbps | 5.78 Gbps | 6.79 Gbps |
 
-| Operations | Socket TCP | Phao MQTT | gRPC IO |
+| Operations | TCP | MQTT | gRPC |
 |-|-|-|-|
 | Sync | 1500.00 IOPS | 220.85 IOPS | 346.37 IOPS |
 | Async | 939.73 IOPS | 296.78 IOPS | 383.04 IOPS |
 | Mix | 1780.00 IOPS | 689.41 IOPS | 809.01 IOPS |
 
-| Memory | Socket TCP | Phao MQTT | gRPC IO |
+| Memory | TCP | MQTT | gRPC |
 |-|-|-|-|
 | Sync | 21.94 MB | 8377.33 MB | 30.68 MB |
 | Async | 33.39 MB | 7585.78 MB | 41.46 MB |
@@ -73,13 +73,13 @@ pip install -e .
 
 ## Documentation
 ### Constants
-- `Backend`:
+- `Protocol`:
 
-  Communication backend
+  Communication protocol
 
-  - `SOCKET_TCP`
-  - `PHAO_MQTT` (requires external broker)
-  - `GRPCIO`
+  - `TCP`
+  - `MQTT` (requires external broker)
+  - `GRPC`
 
 - `Purpose`:
 
@@ -200,11 +200,11 @@ pip install -e .
   - `port: int = 51966`
 
 ### Functions
-- `new(backend, purpose, options)`
+- `new(protocol, purpose, options)`
 
   Create a communicator.
 
-  - `backend: Backend = Backend.SOCKET_TCP`
+  - `protocol: Protocol = Protocol.TCP`
   - `purpose: Purpose = Purpose.Client`
   - `options: CommunicatorOptions = CommunicatorOptions()`
 
@@ -252,7 +252,7 @@ pip install -e .
 
     Close the communicator
 
-- `{backend}.{purpose}.Communicator(options)`
+- `{protocol}.{purpose}.Communicator(options)`
 
   Concrete communicator implementation for the given protocol and purpose
 

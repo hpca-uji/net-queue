@@ -7,7 +7,7 @@ import selectors
 from concurrent.futures import Future
 
 from net_queue.core import server
-from net_queue.socket_tcp import Transport
+from net_queue.tcp import Protocol
 from net_queue.utils.stream import Stream
 from net_queue.core.comm import CommunicatorOptions
 
@@ -17,7 +17,7 @@ __all__ = (
 )
 
 
-class Communicator(Transport, server.Server[socket.socket]):
+class Communicator(Protocol, server.Server[socket.socket]):
     """TCP server"""
 
     def __init__(self, options: CommunicatorOptions = CommunicatorOptions()) -> None:

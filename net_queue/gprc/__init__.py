@@ -1,18 +1,24 @@
 """gRPC communications"""
 
+import sys
 import uuid
 from collections import abc
 
-import grpc
+_path = sys.path.pop()
+try:
+    # global package
+    import grpc
+finally:
+    sys.path.append(_path)
 
 import net_queue.core.comm as nq  # noqa: E402
 
 __all__ = (
-    "Transport",
+    "Protocol",
 )
 
 
-class Transport[T](nq.Communicator[T]):
+class Protocol[T](nq.Communicator[T]):
     """Shared base gRPC implementation"""
     _compression = grpc.Compression.NoCompression
 

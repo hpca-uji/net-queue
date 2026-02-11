@@ -10,7 +10,7 @@ from concurrent.futures import Future
 
 from net_queue.core import client
 from net_queue.utils import asynctools
-from net_queue.grpcio import Transport
+from net_queue.gprc import Protocol
 from net_queue.utils.stream import Stream
 from net_queue.core.comm import CommunicatorOptions
 
@@ -24,7 +24,7 @@ __all__ = (
 ARG_MISSING = object()
 
 
-class Communicator(Transport[grpc.StreamStreamMultiCallable], client.Client[grpc.StreamStreamMultiCallable]):
+class Communicator(Protocol[grpc.StreamStreamMultiCallable], client.Client[grpc.StreamStreamMultiCallable]):
     """gRPC client"""
 
     def __init__(self, options: CommunicatorOptions = CommunicatorOptions()) -> None:
