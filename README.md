@@ -1,5 +1,5 @@
 # net-queue
-Lock-free & zero-copy network communications using queues
+Zero-copy & lock-free network communications using queues
 
 ## Example
 ```python
