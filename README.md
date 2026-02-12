@@ -422,11 +422,11 @@ Close
 - Always block
 - Server waits for peers to disconnect
 
-### Socket TCP
+### TCP
 Library: socket  
 Parallelism: Thread pool (n+1+1 threads)  
 
-### Phao MQTT
+### MQTT
 Library: paho-mqtt  
 Options: tcp transport, 0 QOS, 3.1.1 protocol  
 Parallelism: Single threaded (1+1+1 threads)  
@@ -439,7 +439,7 @@ Peer-groups and global communications are not optimized.
 
 First, chunked message ordering must be resolved. Single chunk order it is guaranteed by the protocol, even on with different topics. Second, peer-groups could be implemented using grouping requests that generate new UUID per group. This would reduce also reduce load on the broker.
 
-### gRPC IO
+### gRPC
 Library: grpcio  
 Options: compression disabled, protobuf disabled  
 Parallelism: Thread pool (n+1+? threads)  
