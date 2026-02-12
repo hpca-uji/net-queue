@@ -150,7 +150,7 @@ pip install -e .
 
     Maximum queued up messages before dropping incoming messages.
 
-    Selection: Maximum according to memory limits.
+    Selection: Maximum according to memory limits.  
     Default: Unlimited for typical usage.  
 
   - `message_size: int = 1 ** 1024 * 4` (1 TiB)
@@ -159,7 +159,7 @@ pip install -e .
     If the deserializer does not supports arbitrary sub-chunks,
     this setting may raise exceptions on message extraction.
 
-    Selection: Maximum according to memory limits.
+    Selection: Maximum according to memory limits.  
     Default: Unlimited for typical usage.  
 
 - `SerializationOptions(...)`
