@@ -152,7 +152,7 @@ class PickleSerializer:
                 global_name = f"{module}.{name}"
                 if allow_class(global_name):
                     return super().find_class(module, name)
-                raise pickle.UnpicklingError(f"global {global_name} is forbidden")
+                raise pickle.UnpicklingError(f"{global_name} is forbidden")
 
         @functools.wraps(pickle.load)
         def load(*args, **kwds):

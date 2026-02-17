@@ -1,4 +1,4 @@
-"""Communications package"""
+"""Structures package"""
 
 import uuid
 import enum
@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import NamedTuple
 from dataclasses import dataclass
 from collections import abc as col_abc
+
 from net_queue.utils.stream import Stream
 from net_queue.utils.streamtools import PickleSerializer
 
@@ -48,18 +49,10 @@ class NetworkLocation(NamedTuple):
 
 @dataclass(order=False, slots=True, frozen=True)
 class ConnectionOptions:
-    """
-    Connection options
-
-    There are no definite values, depends on: use case, OS/stack/version and link specs.
-    Its recommended to test your configuration (or preferably set them dynamically).
-    There are *rules of thumb* but they serve as a baseline.
-    """
-
+    """Connection options"""
     get_merge: bool = True
     put_merge: bool = True
-    efficient_size: int = 64 * 1024 ** 1
-    transport_size: int = 4 * 1024 ** 2
+    transport_size: int = 16 * 1024 ** 2
     queue_size: int = 1 * 1024 ** 3
     message_size: int = 1 * 1024 ** 4
 

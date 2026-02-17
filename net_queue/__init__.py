@@ -1,4 +1,4 @@
-"""Communications package"""
+"""net-queue package"""
 
 import enum
 import importlib

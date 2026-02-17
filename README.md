@@ -111,10 +111,6 @@ pip install -e .
 
   Connection options
 
-  There are no definite values, depends on: use case, OS/stack/version and link specs.
-  Its recommended to test your configuration (or preferably set them dynamically).
-  There are *rules of thumb* but they serve as a baseline.
-
   - `get_merge: bool = True`
 
     Merge message chunks to a contiguous memory block during receiving,
@@ -131,20 +127,12 @@ pip install -e .
     Merged chunks are up to `transport_size` size,
     internally a buffer of this size is preallocated.
 
-  - `efficient_size: int = 64 * 1024 ** 1` (64 KiB)
-
-    Minimum chunk size to consider the send efficient before attempting merging.
-    If no more chunks are queued then the chunk will be sent as-is.
-
-    Selection: Amortize abstractions costs (less +management, more +merging).  
-    Default: Maximum TCP segment size.  
-
-  - `transport_size: int = 4 * 1024 ** 2` (4 MiB)
+  - `transport_size: int = 16 * 1024 ** 2` (16 MiB)
 
     Maximum chunk size to send to underlying backend before splitting.
 
-    Selection: Bandwidth-delay product of network (less +streaming/CPU, more +bursty/RAM).  
-    Default: Typical connection (80Mbps @ 50ms) & balanced RAM/CPU usage.  
+    Selection: Maximum according to transport limits (less +streaming/management, more +bursty/merging).  
+    Default: Balanced CPU/RAM usage.  
 
   - `queue_size: int = 1 ** 1024 ** 3` (1 GiM)
 

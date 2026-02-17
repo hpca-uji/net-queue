@@ -1,12 +1,13 @@
-"""MQTT communications"""
+"""MQTT package"""
 
 import copy
 
 import paho.mqtt.enums as mqtte_enum
 import paho.mqtt.client as mqtt_client
 
-import net_queue.core.comm as nq
 from net_queue.utils import asynctools
+from net_queue.core.comm import Communicator
+from net_queue.core import CommunicatorOptions
 from net_queue.utils.asynctools import thread_queue
 
 
@@ -19,14 +20,14 @@ __all__ = (
 ARG_MISSING = object()
 
 
-class Protocol(nq.Communicator[str]):
+class Protocol(Communicator[str]):
     """Shared base MQTT implementation"""
 
     _qos = 0
     _transport = "tcp"
     _protocol = mqtt_client.MQTTv311
 
-    def __init__(self, options: nq.CommunicatorOptions = nq.CommunicatorOptions()) -> None:
+    def __init__(self, options: CommunicatorOptions = CommunicatorOptions()) -> None:
         """Communication initialization"""
         super().__init__(copy.replace(options, workers=1))
 

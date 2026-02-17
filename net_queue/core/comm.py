@@ -1,4 +1,4 @@
-"""Communications package"""
+"""Communicator package"""
 
 # FIXME: session_ini/fin export future or surface error
 
@@ -12,11 +12,11 @@ from concurrent.futures import Future, ThreadPoolExecutor
 from bidict import bidict
 
 from net_queue.utils import asynctools
+from net_queue.utils.stream import Stream
+from net_queue.core.session import Session
 from net_queue.utils.asynctools import merge_futures
 from net_queue.utils.asynctools import thread_queue
-from net_queue.utils.stream import Stream
 from net_queue.core import CommunicatorOptions, SessionState, Message
-from net_queue.core.session import Session
 
 
 __all__ = (

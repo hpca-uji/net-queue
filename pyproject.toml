@@ -1,6 +1,6 @@
 [project]
 name = "net-queue"
-version = "2.1.3"
+version = "2.2.0"
 description = "Easy & fast network communications using queues"
 readme = "README.md"
 license = "GPL-3.0-or-later"

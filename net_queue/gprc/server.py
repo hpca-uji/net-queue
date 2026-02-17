@@ -1,11 +1,11 @@
-"""gRPC server"""
+"""gRPC server package"""
 
 import grpc
 import traceback
 from collections import abc
 
-from net_queue.core import server
 from net_queue.gprc import Protocol
+from net_queue.core.server import Server
 from net_queue.core.comm import CommunicatorOptions
 
 
@@ -18,7 +18,7 @@ __all__ = (
 END_COMM = None
 
 
-class Communicator(Protocol[str], server.Server[str]):
+class Communicator(Protocol[str], Server[str]):
     """gRPC server"""
 
     def __init__(self, options: CommunicatorOptions = CommunicatorOptions()) -> None:

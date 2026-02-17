@@ -1,4 +1,4 @@
-"""gRPC communications"""
+"""gRPC package"""
 
 import sys
 import uuid
@@ -11,18 +11,20 @@ try:
 finally:
     sys.path.append(_path)
 
-import net_queue.core.comm as nq  # noqa: E402
+from net_queue.core.comm import Communicator  # noqa: E402
+from net_queue.core import CommunicatorOptions  # noqa: E402
+
 
 __all__ = (
     "Protocol",
 )
 
 
-class Protocol[T](nq.Communicator[T]):
+class Protocol[T](Communicator[T]):
     """Shared base gRPC implementation"""
     _compression = grpc.Compression.NoCompression
 
-    def __init__(self, options: nq.CommunicatorOptions = nq.CommunicatorOptions()) -> None:
+    def __init__(self, options: CommunicatorOptions = CommunicatorOptions()) -> None:
         """Initialize protocol"""
         super().__init__(options)
         self._grpc_options = {"grpc.max_receive_message_length": self.options.connection.transport_size, "grpc.max_send_message_length": self.options.connection.transport_size}

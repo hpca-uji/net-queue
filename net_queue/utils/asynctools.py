@@ -24,7 +24,7 @@ def thread_queue(name: str = ""):
 
 def thread_func(func: abc.Callable, /, *args, **kwds):
     """Background function as future"""
-    pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix=func.__name__)
+    pool = thread_queue(name=func.__name__)
     future = pool.submit(func, *args, **kwds)
     pool.shutdown(wait=False)
     return future

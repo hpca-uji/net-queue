@@ -1,4 +1,4 @@
-"""Communications IOPS test"""
+"""net-queue IOPS test"""
 
 import sys
 import math
@@ -33,7 +33,6 @@ def get_options(config: Namespace) -> nq.CommunicatorOptions:
         connection=nq.ConnectionOptions(
             get_merge=config.get_merge,
             put_merge=config.put_merge,
-            efficient_size=config.efficient_size,
             transport_size=config.transport_size,
         ),
         security=nq.SecurityOptions(
@@ -100,7 +99,7 @@ def generate(config: Namespace) -> list[numpy.ndarray]:
 
 
 def server(config: Namespace):
-    """Server peer"""
+    """Server handler"""
     messages = generate(config)
     sizes = list(map(len, messages)) * config.clients
 
@@ -132,7 +131,7 @@ def server(config: Namespace):
 
 
 def client(config: Namespace):
-    """Client peer"""
+    """Client handler"""
     messages = generate(config)
     sizes = list(map(len, messages)) * config.clients
 
@@ -189,7 +188,6 @@ if __name__ == "__main__":
     parser.add_argument("--get-merge", type=bool, default=config.connection.get_merge, help="Enable get stream merging")
     parser.add_argument("--put-merge", type=bool, default=config.connection.put_merge, help="Enable put stream merging")
     parser.add_argument("--transport-size", type=int, default=config.connection.transport_size, help="Maximum put message size")
-    parser.add_argument("--efficient-size", type=int, default=config.connection.efficient_size, help="Put merge size threshold")
     parser.add_argument("--secure", action="store_true", default=False, help="Enable secure communications")
     parser.add_argument("--workers", type=int, default=config.workers, help="Number of workers to use")
     main(parser.parse_args())

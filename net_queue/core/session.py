@@ -1,13 +1,14 @@
-"""Communications package"""
+"""Session package"""
 
 from queue import Empty, SimpleQueue
 from concurrent.futures import Future
 from collections import abc as col_abc, deque
 
 from net_queue.utils import asynctools
+from net_queue.utils.streamtools import Packer
 from net_queue.utils.stream import Stream, byteview, bytearray
 from net_queue.core import CommunicatorOptions, SessionState
-from net_queue.utils.streamtools import Packer
+
 
 __all__ = (
     "Session",
@@ -35,7 +36,6 @@ class Session:
 
         if self._options.connection.get_merge:
             self._get_buffer: memoryview | None = None
-            self._get_size = 0
         else:
             self._get_buffer = None
             self.get_optimize = lambda: None
@@ -46,7 +46,6 @@ class Session:
 
         if self._options.connection.put_merge:
             self._put_buffer = byteview(bytearray(self._options.connection.transport_size))
-            self._put_size = min(self._options.connection.transport_size, self._options.connection.efficient_size)
         else:
             self._put_buffer = None
             self.put_optimize = lambda: None
@@ -60,11 +59,9 @@ class Session:
             f" ack-stream={len(self._ack_stream)!r}" \
             f" get-queue={self._get_queue.qsize()!r}" \
             f" get-buffer={None if self._get_buffer is None else len(self._get_buffer)!r}" \
-            f" get-size={self._get_size!r}" \
             f" get-stream={self._put_stream.nbytes!r}" \
             f" put-queue={self._put_queue.qsize()!r}" \
             f" put-buffer={None if self._put_buffer is None else len(self._put_buffer)!r}" \
-            f" put-size={self._put_size!r}" \
             f" put-stream={self._put_stream.nbytes!r}" \
             ">"
 
@@ -136,7 +133,7 @@ class Session:
 
     def put_optimize(self) -> None:
         """Optimize put buffer"""
-        if self._put_stream.nchunks <= 1 or len(self._put_stream.peekchunk()) >= self._put_size:
+        if self._put_stream.nchunks <= 1 or len(self._put_stream.peekchunk()) >= self._options.connection.transport_size:
             return
 
         assert self._put_buffer is not None, "Put buffer missing!"

@@ -1,4 +1,4 @@
-"""TCP server"""
+"""TCP server package"""
 
 import ssl
 import uuid
@@ -6,8 +6,8 @@ import socket
 import selectors
 from concurrent.futures import Future
 
-from net_queue.core import server
 from net_queue.tcp import Protocol
+from net_queue.core.server import Server
 from net_queue.utils.stream import Stream
 from net_queue.core.comm import CommunicatorOptions
 
@@ -17,7 +17,7 @@ __all__ = (
 )
 
 
-class Communicator(Protocol, server.Server[socket.socket]):
+class Communicator(Protocol, Server[socket.socket]):
     """TCP server"""
 
     def __init__(self, options: CommunicatorOptions = CommunicatorOptions()) -> None:

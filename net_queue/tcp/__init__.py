@@ -1,4 +1,4 @@
-"""TCP communications"""
+"""TCP package"""
 
 import ssl
 import socket
@@ -8,8 +8,9 @@ from collections import abc
 from concurrent import futures
 from queue import Empty, SimpleQueue
 
-import net_queue.core.comm as nq
 from net_queue.utils import asynctools
+from net_queue.core.comm import Communicator
+from net_queue.core import CommunicatorOptions
 from net_queue.utils.asynctools import thread_func
 
 
@@ -26,10 +27,10 @@ CONTROL_STOP = object()
 CONTROL_EVENT = b"\0"
 
 
-class Protocol(nq.Communicator[socket.socket]):
+class Protocol(Communicator[socket.socket]):
     """Shared base TCP implementation"""
 
-    def __init__(self, options: nq.CommunicatorOptions = nq.CommunicatorOptions()) -> None:
+    def __init__(self, options: CommunicatorOptions = CommunicatorOptions()) -> None:
         """Initialize communicator"""
         super().__init__(options)
 

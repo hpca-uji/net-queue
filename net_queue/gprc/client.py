@@ -1,4 +1,4 @@
-"""gRPC client"""
+"""gRPC client package"""
 
 import uuid
 import grpc
@@ -8,9 +8,9 @@ from collections import abc
 from queue import SimpleQueue, Empty
 from concurrent.futures import Future
 
-from net_queue.core import client
-from net_queue.utils import asynctools
 from net_queue.gprc import Protocol
+from net_queue.utils import asynctools
+from net_queue.core.client import Client
 from net_queue.utils.stream import Stream
 from net_queue.core.comm import CommunicatorOptions
 
@@ -24,7 +24,7 @@ __all__ = (
 ARG_MISSING = object()
 
 
-class Communicator(Protocol[grpc.StreamStreamMultiCallable], client.Client[grpc.StreamStreamMultiCallable]):
+class Communicator(Protocol[grpc.StreamStreamMultiCallable], Client[grpc.StreamStreamMultiCallable]):
     """gRPC client"""
 
     def __init__(self, options: CommunicatorOptions = CommunicatorOptions()) -> None:
