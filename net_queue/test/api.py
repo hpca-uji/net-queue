@@ -33,7 +33,7 @@ def get_options(config: Namespace) -> nq.CommunicatorOptions:
     )
 
 
-def server(config: Namespace):
+def server(config: Namespace) -> None:
     """Server handler"""
     clients = set()
     server_msg = MSG
@@ -56,7 +56,7 @@ def server(config: Namespace):
     server.close()
 
 
-def client(config: Namespace):
+def client(config: Namespace) -> None:
     """Client handler"""
     client_msg = MSG
     client = nq.new(protocol=config.protocol, purpose=nq.Purpose.CLIENT, options=get_options(config))
@@ -77,7 +77,7 @@ def client(config: Namespace):
     client.close()
 
 
-def main(config: Namespace):
+def main(config: Namespace) -> None:
     """Application entrypoint"""
     self = sys.modules[__name__]
     handler = getattr(self, config.purpose)

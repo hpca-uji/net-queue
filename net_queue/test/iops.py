@@ -98,7 +98,7 @@ def generate(config: Namespace) -> list[numpy.ndarray]:
     return messages
 
 
-def server(config: Namespace):
+def server(config: Namespace) -> None:
     """Server handler"""
     messages = generate(config)
     sizes = list(map(len, messages)) * config.clients
@@ -130,7 +130,7 @@ def server(config: Namespace):
     print_stats(sizes=sizes, time=end_time - start_time)
 
 
-def client(config: Namespace):
+def client(config: Namespace) -> None:
     """Client handler"""
     messages = generate(config)
     sizes = list(map(len, messages)) * config.clients
@@ -161,7 +161,7 @@ def client(config: Namespace):
     print_stats(sizes=sizes, time=end_time - start_time)
 
 
-def main(config: Namespace):
+def main(config: Namespace) -> None:
     """Application entrypoint"""
     self = sys.modules[__name__]
     handler = getattr(self, config.purpose)
