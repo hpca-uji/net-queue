@@ -7,6 +7,7 @@ import selectors
 from collections import abc
 from concurrent import futures
 from queue import Empty, SimpleQueue
+from traceback import format_exception
 
 from net_queue.utils import asynctools
 from net_queue.core.comm import Communicator
@@ -109,8 +110,7 @@ class Protocol(Communicator[socket.socket]):
                 try:
                     result = future.result()
                 except Exception as exc:
-                    from traceback import format_exception
-                    warnings.warn("\n".join(format_exception(exc)), RuntimeWarning)
+                    warnings.warn("".join(format_exception(exc)), RuntimeWarning)
                 else:
                     if result is CONTROL_STOP:
                         running = False
