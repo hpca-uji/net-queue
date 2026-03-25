@@ -24,6 +24,9 @@ __all__ = (
 )
 
 
+_serializer = PickleSerializer()
+
+
 @dataclass(slots=True, frozen=True)
 class Message[T]:
     """Message object"""
@@ -60,8 +63,8 @@ class ConnectionOptions:
 @dataclass(order=False, slots=True, frozen=True)
 class SerializationOptions:
     """Serialization options"""
-    load: col_abc.Callable[[Stream], typing.Any] = PickleSerializer().load
-    dump: col_abc.Callable[[typing.Any], Stream] = PickleSerializer().dump
+    load: col_abc.Callable[[Stream], typing.Any] = _serializer.load
+    dump: col_abc.Callable[[typing.Any], Stream] = _serializer.dump
 
 
 @dataclass(order=False, slots=True, frozen=True)

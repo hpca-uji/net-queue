@@ -1,8 +1,9 @@
 """Stream utilities"""
 
+import re
 import pickle
 import warnings
-import functools
+from typing import Any
 from struct import Struct
 from collections import abc
 
@@ -21,7 +22,6 @@ class Packer:
     Stream packer
 
     Packs or unpacks streams into another.
-    Supports ancillary streams for control information.
 
     Operations are not thread-safe.
     """
@@ -122,50 +122,66 @@ class BytesSerializer:
         return data.tobytes()
 
 
+class _Unpickler(pickle.Unpickler):
+    """Unpickler with find_class filter"""
+
+    @staticmethod
+    def allow_class(name: str) -> bool:
+        """Is object deserialization allowed?"""
+        return True
+
+    def find_class(self, module: str, name: str):
+        """Return an object from a specified module"""
+        global_name = f"{module}.{name}"
+
+        if self.allow_class(global_name):
+            return super().find_class(module, name)
+
+        raise pickle.UnpicklingError(f"{global_name} is forbidden")
+
+
 class PickleSerializer:
     """Pickle-stream serializer"""
 
-    __slots__ = ("_dump", "_load")
+    __slots__ = ("_allow", "_dump", "_load")
+    _protocol = max(5, pickle.HIGHEST_PROTOCOL)
 
-    def __init__(self, restrict: abc.Iterable[str] | None = None) -> None:
+    @staticmethod
+    def allow_by_name(*names: str) -> abc.Callable[[str], bool]:
+        """
+        Generate an allow function filtering by global names
+
+        Example: `["builtins"]` for a whole module
+        Example: `["uuid.UUID"]` for a single class
+        """
+        return re.compile(rf"^({"|".join(map(re.escape, names))})(\.|$)").match  # type: ignore
+
+    def __init__(self, allow: abc.Callable[[str], bool] | None = None, dump: abc.Callable[[Any], Any] | None = None, load: abc.Callable[[Any], Any] | None = None) -> None:
         """Initialize serializer"""
-        # Setup context
-        self._dump = pickle.dump
-
-        if restrict is None:
-            self._load = pickle.load
-            return
-        else:
-            restrict = frozenset(restrict)
-
-        # Setup restricted context
-        def allow_class(name: str) -> bool:
-            r, s, _ = name, ".", ""
-            while r:
-                if r in restrict:
-                    return True
-                r, s, _ = r.rpartition(s)
-            return False
-
-        class Deserializer(pickle.Unpickler):
-            def find_class(self, module: str, name: str):
-                global_name = f"{module}.{name}"
-                if allow_class(global_name):
-                    return super().find_class(module, name)
-                raise pickle.UnpicklingError(f"{global_name} is forbidden")
-
-        @functools.wraps(pickle.load)
-        def load(*args, **kwds):
-            return Deserializer(*args, *kwds).load()
-
+        self._allow = allow
         self._load = load
+        self._dump = dump
 
     def dump(self, data) -> Stream:
         """Transform a data into a stream"""
         stream = Stream()
-        self._dump(obj=data, file=stream, protocol=5)
+        pickler = pickle.Pickler(file=stream, protocol=self._protocol)
+
+        if self._dump is not None:
+            pickler.persistent_id = self._dump
+
+        pickler.dump(data)
         return stream
 
     def load(self, data: Stream):
         """Transform a stream into useful data"""
-        return self._load(data)
+        if self._allow is not None:
+            unpickler = _Unpickler(file=data)
+            unpickler.allow_class = self._allow  # type: ignore
+        else:
+            unpickler = pickle.Unpickler(file=data)
+
+        if self._load is not None:
+            unpickler.persistent_load = self._load
+
+        return unpickler.load()

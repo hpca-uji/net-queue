@@ -330,15 +330,25 @@ pip install -e .
 
   **Warning**: The `pickle` module is not secure. Only unpickle data you trust.
 
-  - `restrict: Iterable[str] | None = None`
+  - `allow: Callable[[str], bool] | None = None`
 
-    If defined it limits the range of trusted types.
+    Returns if global name is trusted and can be loaded.
 
-    Example: `["builtins"]` for a whole module
-
-    Example: `["uuid.UUID"]` for a single class
+    Default: allow everything
 
     *Note*: Some builtins may be implicitly allowed due to optimizations.
+
+  - `dump: Callable[[Any], Any] | None = None`
+
+    Returns if the data is persistent, an identifier, otherwise `None`
+
+    Default: everything transient
+
+  - `load: Callable[[Any], Any] | None = None`
+
+    Load data from a persistent identifier
+
+    Default: raise exception
 
   ---
 
@@ -349,6 +359,15 @@ pip install -e .
   - `dump(data: Stream) -> Any`
 
     Transform a stream into useful data
+
+  ---
+
+  - `allow_by_name(*names: str) -> Callable[[str], bool]`
+
+    Generate an allow function filtering by global names
+
+    Example: `["builtins"]` for a whole module  
+    Example: `["uuid.UUID"]` for a single class  
 
 - `utils.streamtools.BytesSerializer(...)`
 
