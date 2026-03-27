@@ -16,7 +16,7 @@ classifiers = [
     "Topic :: Utilities"
 ]
 keywords = ["Communication", "Protocol", "Python"]
-urls = { Homepage = "https://github.com/hpca-uji/net-queue", Repository = "https://github.com/hpca-uji/net-queue.git"}
+urls = { Homepage = "https://github.com/hpca-uji/net-queue", Repository = "https://github.com/hpca-uji/net-queue.git" }
 
 requires-python = ">=3.13"
 dependencies = [
