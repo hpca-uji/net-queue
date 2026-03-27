@@ -10,12 +10,12 @@ from queue import SimpleQueue
 from concurrent.futures import Future, ThreadPoolExecutor
 
 from bidict import bidict
+from streamview import Stream
 
-from net_queue.utils import asynctools
-from net_queue.utils.stream import Stream
+from net_queue.utils import futures
 from net_queue.core.session import Session
-from net_queue.utils.asynctools import merge_futures
-from net_queue.utils.asynctools import thread_queue
+from net_queue.utils.futures import merge
+from net_queue.utils.futures import queue
 from net_queue.core import CommunicatorOptions, SessionState, Message
 
 
@@ -49,7 +49,7 @@ class Communicator[T](abc.ABC):
 
         thread_prefix = f"{__name__}.{self.__class__.__qualname__}:{id(self)}"
 
-        self._put_queue = thread_queue(f"{thread_prefix}.put")
+        self._put_queue = queue(f"{thread_prefix}.put")
         self._pool = ThreadPoolExecutor(max_workers=self.options.workers, thread_name_prefix=f"{thread_prefix}.worker")
 
     def __repr__(self) -> str:
@@ -150,7 +150,7 @@ class Communicator[T](abc.ABC):
         session = self._sessions[peer]
 
         for future in session.put_commit(size):
-            self._put_queue.submit(asynctools.future_set_result, future, None).add_done_callback(asynctools.future_warn_exception)
+            self._put_queue.submit(futures.set_result, future, None).add_done_callback(futures.warn_exception)
 
     def _set_default_peer(self, comm: T) -> uuid.UUID:
         """Get associated peer or create a new one if missing"""
@@ -252,9 +252,9 @@ class Communicator[T](abc.ABC):
             future = session.put(stream)
         else:
             future = Future[None]()
-            asynctools.future_set_exception(future, ConnectionResetError(peer))
+            futures.set_exception(future, ConnectionResetError(peer))
         if self._closed:
-            asynctools.future_set_exception(future, ConnectionAbortedError(self.id))
+            futures.set_exception(future, ConnectionAbortedError(self.id))
         return future
 
     def put(self, data, *peers: uuid.UUID) -> Future[None]:
@@ -283,7 +283,7 @@ class Communicator[T](abc.ABC):
                 future = self._put(stream.copy(), peer)
                 futures.append(future)
 
-        return merge_futures(futures)
+        return merge(*futures)
 
     @property
     def _closed(self):

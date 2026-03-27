@@ -6,9 +6,10 @@ import socket
 import selectors
 from concurrent.futures import Future
 
+from streamview import Stream
+
 from net_queue.tcp import Protocol
 from net_queue.core.server import Server
-from net_queue.utils.stream import Stream
 from net_queue.core.comm import CommunicatorOptions
 
 

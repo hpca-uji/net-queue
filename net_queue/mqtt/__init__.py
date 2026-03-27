@@ -5,10 +5,10 @@ import copy
 import paho.mqtt.enums as mqtte_enum
 import paho.mqtt.client as mqtt_client
 
-from net_queue.utils import asynctools
+from net_queue.utils import futures
 from net_queue.core.comm import Communicator
 from net_queue.core import CommunicatorOptions
-from net_queue.utils.asynctools import thread_queue
+from net_queue.utils.futures import queue
 
 
 __all__ = (
@@ -32,7 +32,7 @@ class Protocol(Communicator[str]):
         super().__init__(copy.replace(options, workers=1))
 
         # State
-        self._publish_queue = thread_queue(f"{__name__}.{self.__class__.__qualname__}:{id(self)}.publish")
+        self._publish_queue = queue(f"{__name__}.{self.__class__.__qualname__}:{id(self)}.publish")
 
         # MQTT
         self._client = mqtt_client.Client(
@@ -68,4 +68,4 @@ class Protocol(Communicator[str]):
     def _publish(self, topic: str, data=None) -> None:
         """Generic MQTT publish"""
         message = self._client.publish(topic=topic, payload=data, qos=self._qos)
-        self._publish_queue.submit(message.wait_for_publish).add_done_callback(asynctools.future_warn_exception)
+        self._publish_queue.submit(message.wait_for_publish).add_done_callback(futures.warn_exception)

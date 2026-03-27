@@ -1,308 +1,203 @@
-"""Stream structure"""
-from __future__ import annotations
+"""Stream utilities"""
 
-import io
-from collections import abc, deque
+import re
+import pickle
+import warnings
+from io import BytesIO
+from typing import Any
+from struct import Struct
+from collections import abc
 
-# bytearray fast-path
-try:
-    from sabctools import bytearray_malloc as bytearray
-except Exception:
-    pass
+from streamview import Stream, byteview
+
 
 __all__ = (
-    "byteview",
-    "bytearray",
-    "buffer_index",
-    "Stream"
+    "Framer",
+    "BytesSerializer",
+    "PickleSerializer"
 )
 
 
-def byteview(b: abc.Buffer) -> memoryview:
-    """Return a byte view of a buffer"""
-    with memoryview(b) as view:
-        return view.cast("B")
-
-
-def buffer_index(b: abc.Buffer, sub: bytes) -> int:
-    """Find lowest index where substring is found"""
-    if len(sub) != 1:
-        raise TypeError("Only single byte substring are supported")
-    for i, byte in enumerate(b):  # type: ignore
-        if byte == sub:
-            return i
-    else:
-        raise ValueError("Substring not found")
-
-
-class Stream(io.BufferedIOBase):
+class Framer:
     """
-    Zero-copy non-blocking pipe-like
+    Stream framer
 
-    Interface mimics a non-blocking BufferedIOBase,
-    but operations return memoryviews instead of bytes.
+    Packs or unpacks streams into another.
 
     Operations are not thread-safe.
-    Reader is responsible of releasing chunks.
-    Writer hands off responsibility over chunks.
-
-    Stream has `with` and `bytes` support.
-    Stream has `copy()` support, however it does not support `deepcopy()`.
     """
 
-    __slots__ = ("_nbytes", "_chunks")
+    # NOTE: Format:
+    # - Network byte order (big-endian)
+    # - Size only includes stream (not itself)
+    #
+    # +---------------+-------------------+
+    # | Size (uint64) | Stream (variable) |
+    # +---------------+-------------------+
 
-    def __init__(self):
-        """Initialize stream"""
-        self._nbytes = 0
-        self._chunks = deque[memoryview]()
+    # TODO: Use header methods for data variants
+    # TODO: Use uintvar (VLQ) instead of uint64 in packer
 
-    # stream properties
-    @property
-    def nchunks(self) -> int:
-        """Number of chunks held in stream"""
-        return len(self._chunks)
+    __slots__ = ()
+    _header = Struct("!Q")
 
-    @property
-    def nbytes(self) -> int:
-        """Number of bytes held in stream"""
-        return self._nbytes
+    def unpack_header(self, transport: Stream) -> int:
+        """Extracts header from packer (raises BlockingIOError if no stream)"""
+        # Check if size available
+        rb = self._header.size
+        if transport.nbytes < rb:
+            raise BlockingIOError()
 
-    def empty(self) -> bool:
-        """Is stream empty (would read block)"""
-        return not bool(self._chunks)
+        # Read size
+        with transport.read(rb) as chunk:
+            return self._header.unpack(chunk)[0]
 
-    # stream base methods
-    def unreadchunk(self, chunk: memoryview) -> int:
-        """Unread a chunk into the stream"""
-        size = len(chunk)
+    def pack_header(self, transport: Stream, size: int) -> int:
+        """Inserts header into packer, returns bytes written"""
+        pack = self._header.pack(size)
+        size = transport.write(pack)
+        return size
 
-        if size > 0:
-            self._chunks.appendleft(chunk)
+    def unpack(self, transport: Stream, size: int = -1) -> Stream:
+        """Extracts stream from packer (raises BlockingIOError if no stream)"""
+        # Check if size available
+        rb = self._header.size
+        if transport.nbytes < rb:
+            raise BlockingIOError()
+
+        # Read size
+        chunk = transport.read(rb)
+        rb = self._header.unpack(chunk)[0]
+
+        # Compute limits
+        if size >= 0 and size < rb:
+            extra = rb - size
+            rb = size
+        else:
+            extra = 0
+
+        # Check if data available
+        if transport.nbytes < rb:
+            transport.unreadchunk(chunk)
+            raise BlockingIOError()
         else:
             chunk.release()
 
-        self._nbytes += size
-        return size
+        # Ensure contained reads
+        upper = Stream()
+        while rb > 0:
+            chunk = transport.read1(rb)
+            upper.writechunk(chunk)
+            rb -= len(chunk)
 
-    def readchunk(self) -> memoryview:
-        """Read a chunk from stream"""
-        if self.empty():
-            raise BlockingIOError()
+        # Write truncated header
+        if extra > 0:
+            warnings.warn("Truncated stream!", ResourceWarning)
+            pack = self._header.pack(extra)
+            transport.unreadchunk(byteview(pack))
 
-        chunk = self._chunks.popleft()
-        self._nbytes -= len(chunk)
-        return chunk
+        # Return stream
+        return upper
 
-    def unwritechunk(self) -> memoryview:
-        """Unwrite a chunk from the stream"""
-        if self.empty():
-            raise BlockingIOError()
+    def pack(self, transport: Stream, data: Stream) -> int:
+        """Inserts stream into packer, returns bytes written"""
+        # Ensure contained writes
+        wb = data.nbytes
+        pack = self._header.pack(wb)
+        wb += transport.write(pack)
+        transport.writechunks(data.readchunks())
+        return wb
 
-        chunk = self._chunks.pop()
-        self._nbytes -= len(chunk)
-        return chunk
 
-    def writechunk(self, chunk: memoryview) -> int:
-        """Write a chunk into the stream"""
-        size = len(chunk)
+class BytesSerializer:
+    """Bytes-stream serializer"""
 
-        if size > 0:
-            self._chunks.append(chunk)
-        else:
-            chunk.release()
+    __slots__ = ()
 
-        self._nbytes += size
-        return size
+    def dump(self, data: bytes) -> Stream:
+        """Transform a data into a stream"""
+        return Stream.frombytes(data)
 
-    def peekchunk(self) -> memoryview:
-        """Peek a chunk from stream"""
-        if self.empty():
-            return byteview(b"")
+    def load(self, data: Stream) -> bytes:
+        """Transform a stream into useful data"""
+        return data.tobytes()
 
-        return self._chunks[0]
 
-    # stream extended methods
-    def readchunks(self) -> abc.Iterable[memoryview]:
-        """Read all chunks from stream"""
-        while not self.empty():
-            yield self.readchunk()
+class _Unpickler(pickle.Unpickler):
+    """Unpickler with find_class filter"""
 
-    def writechunks(self, chunks: abc.Iterable[memoryview]) -> int:
-        """Write many chunks into the stream"""
-        size = 0
+    @staticmethod
+    def allow_class(name: str) -> bool:
+        """Is object deserialization allowed?"""
+        return True
 
-        for chunk in chunks:
-            size += self.writechunk(chunk)
+    def find_class(self, module: str, name: str):
+        """Return an object from a specified module"""
+        global_name = f"{module}.{name}"
 
-        return size
+        if self.allow_class(global_name):
+            return super().find_class(module, name)
 
-    def update(self, bs: abc.Iterable[abc.Buffer]) -> int:
-        """Write many buffers into the stream"""
-        size = 0
+        raise pickle.UnpicklingError(f"{global_name} is forbidden")
 
-        for b in bs:
-            size += self.write(b)
 
-        return size
+class PickleSerializer:
+    """Pickle-stream serializer"""
 
-    def clear(self) -> None:
-        """Release all chunks"""
-        for chunk in self.readchunks():
-            chunk.release()
+    __slots__ = ("_allow", "_dump", "_load")
+    _protocol = max(5, pickle.HIGHEST_PROTOCOL)
 
-    def copy(self) -> Stream:
-        """Shallow copy of stream"""
-        other = self.__class__()
-        other.update(self._chunks)
-        return other
+    @staticmethod
+    def allow_by_name(*names: str) -> abc.Callable[[str], bool]:
+        """
+        Generate an allow function filtering by global names
 
-    def tobytes(self) -> bytes:
-        """Transform stream to bytes (will copy)"""
-        if self.empty():
-            return b""
-        return self.read().tobytes()
+        Example: `["builtins"]` for a whole module
+        Example: `["uuid.UUID"]` for a single class
+        """
+        return re.compile(rf"^({"|".join(map(re.escape, names))})(\.|$)").match  # type: ignore
 
-    @classmethod
-    def frombytes(cls, b: abc.Buffer) -> Stream:
-        """Construct a stream from bytes"""
-        stream = cls()
-        stream.write(b)
+    def __init__(self, allow: abc.Callable[[str], bool] | None = None, dump: abc.Callable[[Any], Any] | None = None, load: abc.Callable[[Any], Any] | None = None) -> None:
+        """Initialize serializer"""
+        self._allow = allow
+        self._load = load
+        self._dump = dump
+
+    def dump(self, data) -> Stream:
+        """Transform a data into a stream"""
+        stream = Stream()
+        pickler = pickle.Pickler(file=stream, protocol=self._protocol)
+
+        if self._dump is not None:
+            pickler.persistent_id = self._dump
+
+        pickler.dump(data)
         return stream
 
-    def __bytes__(self) -> bytes:
-        """Transform stream to bytes (will copy)"""
-        return self.tobytes()
-
-    def __copy__(self) -> Stream:
-        """Shallow copy of stream"""
-        return self.copy()
-
-    # io methods
-    def write(self, b: abc.Buffer) -> int:
-        """Inserts buffer into stream"""
-        chunk = byteview(b)
-        size = self.writechunk(chunk)
-        return size
-
-    def readline(self) -> memoryview:
-        """Read a line and return a memoryview (may copy)"""
-        if self.empty():
-            raise BlockingIOError()
-
-        with Stream() as stream:
-            for chunk in self.readchunks():
-                try:
-                    i = buffer_index(chunk, b"\n")
-                except ValueError:
-                    stream.writechunk(chunk)
-                    continue
-                else:
-                    self.unreadchunk(chunk)
-                    chunk = self.read1(i)
-                    stream.writechunk(chunk)
-                    break
-            return stream.read()
-
-    def read1(self, size: int = -1, /) -> memoryview:
-        """Reads, with at most one operation, and returns a memoryview"""
-        chunk = self.readchunk()
-
-        if size < 0 or size >= len(chunk):
-            return chunk
-
-        with chunk:
-            read, keep = chunk[:size], chunk[size:]
-        self.unreadchunk(keep)
-        return read
-
-    def readinto1(self, b: abc.Buffer, /) -> int:
-        """Reads, with at most one operation, into a buffer"""
-        with byteview(b) as view:
-            with self.read1(len(view)) as chunk:
-                size = len(chunk)
-                view[:size] = chunk
-
-        return size
-
-    def readinto(self, b: abc.Buffer, /) -> int:
-        """Reads, until drained, into a buffer"""
-        if self.empty():
-            raise BlockingIOError()
-
-        read = 0
-        with byteview(b) as view:
-            while not self.empty() and read < len(view):
-                with view[read:] as subview:
-                    read += self.readinto1(subview)
-
-        return read
-
-    def read(self, size: int = -1, /) -> memoryview:
-        """Reads, until drained, and returns a memoryview (may copy)"""
-        if size < 0:
-            size = self.nbytes
+    def load(self, data: Stream):
+        """Transform a stream into useful data"""
+        if self._allow is not None:
+            unpickler = _Unpickler(file=data)
+            unpickler.allow_class = self._allow  # type: ignore
         else:
-            size = min(size, self.nbytes)
+            unpickler = pickle.Unpickler(file=data)
 
-        # View path
-        chunk = self.read1(size)
-        if len(chunk) == size:
-            return chunk
+        if self._load is not None:
+            unpickler.persistent_load = self._load
 
-        # Copy path
-        buffer = bytearray(size)
-        self.unreadchunk(chunk)
-        self.readinto(buffer)
-        return byteview(buffer)
+        return unpickler.load()
 
-    def __del__(self) -> None:
-        """Best effort finalizer"""
-        try:
-            self.close()
-        except:  # noqa: E722
-            pass
 
-    # io stubs
-    def __iter__(self) -> abc.Iterable[memoryview]:
-        return self.readlines()
+class _PickleSerializer(PickleSerializer):
+    """Serializer that emulates a pickle behavior"""
 
-    def fileno(self) -> int:
-        raise OSError()
+    def dump(self, data) -> Stream:
+        """Transform a data into a stream"""
+        stream = BytesIO()
+        pickler = pickle.Pickler(file=stream, protocol=self._protocol)
 
-    def flush(self) -> None:
-        pass
+        if self._dump is not None:
+            pickler.persistent_id = self._dump
 
-    def isatty(self) -> bool:
-        return False
-
-    def readable(self) -> bool:
-        return True
-
-    def readlines(self):
-        while not self.empty():
-            yield self.readline()
-
-    def seek(self, offset, whence=io.SEEK_SET, /) -> int:
-        raise OSError()
-
-    def seekable(self) -> bool:
-        return False
-
-    def tell(self) -> int:
-        raise OSError()
-
-    def truncate(self, size=None, /) -> int:
-        raise OSError()
-
-    def writable(self) -> bool:
-        return True
-
-    def writelines(self, lines: abc.Iterable[abc.Buffer], /) -> None:
-        self.update(lines)
-
-    def detach(self) -> abc.Buffer:
-        raise io.UnsupportedOperation()
-
-    def close(self) -> None:
-        self.clear()
+        pickler.dump(data)
+        return Stream.frombytes(stream.getvalue())

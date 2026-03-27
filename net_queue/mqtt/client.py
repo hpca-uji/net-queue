@@ -3,12 +3,12 @@
 import uuid
 from concurrent.futures import Future
 
+from streamview import Stream
 import paho.mqtt.client as mqtt_client
 
 from net_queue.mqtt import Protocol
-from net_queue.utils import asynctools
+from net_queue.utils import futures
 from net_queue.core.client import Client
-from net_queue.utils.stream import Stream
 from net_queue.core.comm import CommunicatorOptions
 
 
@@ -49,7 +49,7 @@ class Communicator(Protocol, Client[str]):
     def _put(self, stream: Stream, peer: uuid.UUID) -> Future[None]:
         """Put stream into queue and notify"""
         future = super()._put(stream, peer)
-        self._pool.submit(self._c2s, self._comm).add_done_callback(asynctools.future_warn_exception)
+        self._pool.submit(self._c2s, self._comm).add_done_callback(futures.warn_exception)
         return future
 
     def _c2s(self, comm: str):

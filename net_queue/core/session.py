@@ -4,15 +4,23 @@ from queue import Empty, SimpleQueue
 from concurrent.futures import Future
 from collections import abc as col_abc, deque
 
-from net_queue.utils import asynctools
-from net_queue.utils.streamtools import Packer
-from net_queue.utils.stream import Stream, byteview, bytearray
+from streamview import Stream, byteview
+
+from net_queue.utils import futures
+from net_queue.utils.stream import Framer
 from net_queue.core import CommunicatorOptions, SessionState
 
 
 __all__ = (
     "Session",
 )
+
+
+# bytearray fast-path
+try:
+    from sabctools import bytearray_malloc as bytearray
+except Exception:
+    pass
 
 
 class Session:
@@ -25,7 +33,7 @@ class Session:
         self.peer = options.id
 
         # Helpers
-        self._packer = Packer()
+        self._framer = Framer()
 
         self._ack_queue = dict[Stream, Future]()
         self._ack_stream = deque[tuple[int, Future]]()
@@ -67,20 +75,20 @@ class Session:
 
     def get_empty(self) -> bool:
         """Is get connection flushed"""
-        return self._get_queue.empty() and self._get_stream.empty() and self._get_buffer is None
+        return not self._get_queue and not self._get_stream and self._get_buffer is None
 
     def put_empty(self) -> bool:
         """Is put connection flushed"""
-        return self._put_queue.empty() and self._put_stream.empty()
+        return not self._put_queue and not self._put_stream
 
     def get(self) -> Stream:
         """Unpack from get buffer"""
-        return self._packer.unpack(self._get_stream, self._options.connection.message_size)
+        return self._framer.unpack(self._get_stream, self._options.connection.message_size)
 
     def put(self, stream: Stream) -> Future[None]:
         """Push stream to put queue"""
         future = Future[None]()
-        asynctools.future_set_running(future)
+        futures.set_running(future)
         self._ack_queue[stream] = future
         self._put_queue.put(stream)
         return future
@@ -101,9 +109,9 @@ class Session:
         """Optimize get buffer"""
 
         # Generate buffer
-        if self._get_buffer is None and not self._get_stream.empty():
+        if self._get_buffer is None and self._get_stream:
             try:
-                size = self._packer.unpack_header(self._get_stream)
+                size = self._framer.unpack_header(self._get_stream)
             except BlockingIOError:
                 pass
             else:
@@ -114,7 +122,7 @@ class Session:
                 self._get_buffer = byteview(bytearray(size))
 
         # Transfer to buffer
-        if self._get_buffer is not None and not self._get_stream.empty() and len(self._get_buffer) > 0:
+        if self._get_buffer is not None and self._get_stream and len(self._get_buffer) > 0:
             size = self._get_stream.readinto(self._get_buffer)
             with self._get_buffer:
                 self._get_buffer = self._get_buffer[size:]
@@ -123,7 +131,7 @@ class Session:
         if self._get_buffer is not None and not len(self._get_buffer) > 0:
             with Stream() as stream:
                 with self._get_buffer:
-                    self._packer.pack_header(stream, self._get_size)
+                    self._framer.pack_header(stream, self._get_size)
                     stream.write(self._get_buffer.obj)
                     self._get_buffer = None
                 chunks = list(stream.readchunks())
@@ -171,7 +179,7 @@ class Session:
             while True:
                 stream = self._put_queue.get_nowait()
                 future = self._ack_queue.pop(stream)
-                size = self._packer.pack(self._put_stream, stream)
+                size = self._framer.pack(self._put_stream, stream)
                 self._ack_stream.append((size, future))
         except Empty:
             pass

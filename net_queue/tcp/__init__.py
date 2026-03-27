@@ -9,10 +9,9 @@ from concurrent import futures
 from queue import Empty, SimpleQueue
 from traceback import format_exception
 
-from net_queue.utils import asynctools
 from net_queue.core.comm import Communicator
 from net_queue.core import CommunicatorOptions
-from net_queue.utils.asynctools import thread_func
+from net_queue.utils.futures import background, warn_exception
 
 
 __all__ = (
@@ -40,8 +39,8 @@ class Protocol(Communicator[socket.socket]):
         self._control_socket[1].setblocking(False)
         self._selector.register(self._control_socket[0], selectors.EVENT_READ, self._handle_control_socket)
 
-        self._loop_thread = thread_func(self._handle_selector_loop)
-        self._loop_thread.add_done_callback(asynctools.future_warn_exception)
+        self._loop_thread = background(self._handle_selector_loop)
+        self._loop_thread.add_done_callback(warn_exception)
         self._task_queue = SimpleQueue[Task]()
 
         # Receive fast-path
@@ -157,7 +156,7 @@ class Protocol(Communicator[socket.socket]):
 
         size = 0
         session.put_flush_queue()
-        if session._put_stream.empty():
+        if not session._put_stream:
             return
         with session.put_read() as view:
             try:

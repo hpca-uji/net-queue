@@ -9,8 +9,9 @@ from typing import NamedTuple
 from dataclasses import dataclass
 from collections import abc as col_abc
 
-from net_queue.utils.stream import Stream
-from net_queue.utils.streamtools import PickleSerializer
+from streamview import Stream
+
+from net_queue.utils.stream import PickleSerializer
 
 
 __all__ = (

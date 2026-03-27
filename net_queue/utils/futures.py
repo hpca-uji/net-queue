@@ -8,30 +8,30 @@ from concurrent.futures import Future, ThreadPoolExecutor
 
 
 __all__ = (
-    "thread_func",
-    "thread_queue",
-    "merge_futures",
-    "future_set_running",
-    "future_set_result",
-    "future_set_exception",
-    "future_warn_exception"
+    "background",
+    "queue",
+    "merge",
+    "set_running",
+    "set_result",
+    "set_exception",
+    "warn_exception"
 )
 
 
-def thread_queue(name: str = ""):
+def queue(name: str = ""):
     """Background single-thread task queue"""
     return ThreadPoolExecutor(max_workers=1, thread_name_prefix=name)
 
 
-def thread_func(func: abc.Callable, /, *args, **kwds):
+def background(func: abc.Callable, /, *args, **kwds):
     """Background function as future"""
-    pool = thread_queue(name=func.__name__)
+    pool = queue(name=func.__name__)
     future = pool.submit(func, *args, **kwds)
     pool.shutdown(wait=False)
     return future
 
 
-def future_logger_disable():
+def disable_logger():
     """Disable future logger"""
     import sys
     import logging
@@ -39,7 +39,7 @@ def future_logger_disable():
     logger.setLevel(sys.maxsize)
 
 
-def future_set_running(future: Future) -> bool:
+def set_running(future: Future) -> bool:
     """Set future running (if plausible)"""
     try:
         return future.set_running_or_notify_cancel()
@@ -47,7 +47,7 @@ def future_set_running(future: Future) -> bool:
         return False
 
 
-def future_set_result(future: Future, result) -> bool:
+def set_result(future: Future, result) -> bool:
     """Set future result (if plausible)"""
     try:
         future.set_result(result)
@@ -57,7 +57,7 @@ def future_set_result(future: Future, result) -> bool:
         return True
 
 
-def future_set_exception(future: Future, exc: BaseException) -> bool:
+def set_exception(future: Future, exc: BaseException) -> bool:
     """Set future exception (if plausible)"""
     try:
         future.set_exception(exc)
@@ -67,13 +67,13 @@ def future_set_exception(future: Future, exc: BaseException) -> bool:
         return True
 
 
-def future_warn_exception[T](future: Future[T]) -> None:
+def warn_exception[T](future: Future[T]) -> None:
     """Future handler that warns about exceptions"""
     if (exc := future.exception()) is not None:
         warnings.warn("".join(format_exception(exc)), RuntimeWarning)
 
 
-def merge_futures(fs: abc.Iterable[Future], return_when=futures.ALL_COMPLETED) -> Future:
+def merge(*fs: Future, return_when=futures.ALL_COMPLETED) -> Future:
     """
     Combines multiple futures
 
@@ -84,7 +84,7 @@ def merge_futures(fs: abc.Iterable[Future], return_when=futures.ALL_COMPLETED) -
     When no futures are provided, returns None
     """
     future = Future()
-    fs = frozenset(fs)
+    fs = frozenset(fs)  # type: ignore
     done = set()
 
     # Callbacks
@@ -96,26 +96,26 @@ def merge_futures(fs: abc.Iterable[Future], return_when=futures.ALL_COMPLETED) -
             result = future.result()
         except Exception as exc:
             if return_when == futures.FIRST_COMPLETED or return_when == futures.FIRST_EXCEPTION:
-                future_set_exception(future, exc)
+                set_exception(future, exc)
         else:
             if return_when == futures.FIRST_COMPLETED:
-                future_set_result(future, result)
+                set_result(future, result)
 
         # Multi case
         if len(done) >= len(fs):
-            future_set_result(future, None)
+            set_result(future, None)
 
     future.futures = fs  # type: ignore
-    future_set_running(future)
+    set_running(future)
 
     for future in fs:
         future.add_done_callback(handle_done)
 
     # Empty case
     if len(fs) <= 0:
-        future_set_result(future, None)
+        set_result(future, None)
 
     return future
 
 
-future_logger_disable()
+disable_logger()

@@ -244,87 +244,7 @@ pip install -e .
 
   Concrete communicator implementation for the given protocol and purpose
 
-- `utils.stream.Stream()`
-
-  Zero-copy non-blocking pipe-like
-
-  Interface mimics a non-blocking BufferedRWPair,
-  but operations return memoryviews instead of bytes.
-
-  Operations are not thread-safe.
-  Reader is responsible of releasing chunks.
-  Writer hands off responsibility over chunks.
-
-  Stream has `with` and `bytes` support.
-  Stream has `copy.copy()` support, however it does not support `copy.deepcopy()`.
-
-  Extends: `BufferedIOBase`
-
-  - `nchunks -> int`
-
-    Number of chunks held in stream
-
-  - `nbytes -> int`
-
-    Number of bytes held in stream
-
-  - `empty() -> bool`
-
-    Is stream empty (would read block)
-
-  - `readchunk() -> memoryview`
-
-    Read a chunk from stream
-
-  - `unreadchunk(chunk: memoryview) -> int`
-
-    Unread a chunk into the stream
-
-  - `readchunk() -> memoryview`
-
-    Read a chunk from stream
-
-  - `unwritechunk() -> memoryview`
-
-    Unwrite a chunk from the stream
-
-  - `writechunk(chunk: memoryview) -> int`
-
-    Write a chunk into the stream
-
-  - `peekchunk() -> memoryview`
-
-    Peek a chunk from stream
-
-  - `readchunks() -> Iterable[memoryview]`
-
-    Read all chunks from stream
-
-  - `writechunks(chunks: Iterable[memoryview]) -> int`
-
-    Write many chunks into the stream
-
-  - `update(bs: Iterable[Buffer]) -> int`
-
-    Write many buffers into the stream
-
-  - `clear() -> None`
-
-    Release all chunks
-
-  - `copy() -> Stream`
-
-    Shallow copy of stream
-
-  - `tobytes() -> bytes`
-
-      Transform stream to bytes (will copy)
-
-  - `frombytes(b: Buffer) -> Stream`
-
-      Construct a stream from bytes
-
-- `utils.streamtools.PickleSerializer(...)`
+- `utils.stream.PickleSerializer(...)`
 
   Pickle-stream serializer
 
@@ -369,7 +289,7 @@ pip install -e .
     Example: `["builtins"]` for a whole module  
     Example: `["uuid.UUID"]` for a single class  
 
-- `utils.streamtools.BytesSerializer(...)`
+- `utils.stream.BytesSerializer(...)`
 
   Bytes-stream serializer
 

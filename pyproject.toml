@@ -1,13 +1,11 @@
 [project]
 name = "net-queue"
-version = "2.3.0"
+version = "2.4.0"
 description = "Easy & fast network communications using queues"
 readme = "README.md"
 license = "GPL-3.0-or-later"
 license-files = ["LICENSE"]
-authors = [
-    { name = "Miguel Ángel Prosper", email = "mprosper@uji.es" }
-]
+authors = [{ name = "Miguel Ángel Prosper", email = "mprosper@uji.es" }]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
@@ -25,7 +23,8 @@ dependencies = [
     "bidict>=0.23.1",
     "sabctools>=9.3.0",
     "grpcio>=1.74.0",
-    "paho-mqtt>=2.1.0"
+    "paho-mqtt>=2.1.0",
+    "streamview>=1.0.0"
 ]
 
 [project.optional-dependencies]

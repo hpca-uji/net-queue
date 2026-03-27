@@ -8,10 +8,11 @@ from collections import abc
 from queue import SimpleQueue, Empty
 from concurrent.futures import Future
 
+from streamview import Stream
+
 from net_queue.gprc import Protocol
-from net_queue.utils import asynctools
+from net_queue.utils import futures
 from net_queue.core.client import Client
-from net_queue.utils.stream import Stream
 from net_queue.core.comm import CommunicatorOptions
 
 
@@ -61,7 +62,7 @@ class Communicator(Protocol[grpc.StreamStreamMultiCallable], Client[grpc.StreamS
         """Put stream into queue and notify"""
         future = super()._put(stream, peer)
         comm = self._comms[peer]
-        self._pool.submit(self._c2s, comm).add_done_callback(asynctools.future_warn_exception)
+        self._pool.submit(self._c2s, comm).add_done_callback(futures.warn_exception)
         return future
 
     def _get(self, *peers: uuid.UUID) -> uuid.UUID:
@@ -127,7 +128,7 @@ class Communicator(Protocol[grpc.StreamStreamMultiCallable], Client[grpc.StreamS
 
         # Handle receive loop
         backoff = None
-        while self._get_grpc.empty():
+        while not self._get_grpc:
             if not hasattr(self, "_connected"):
                 return
             elif backoff:
