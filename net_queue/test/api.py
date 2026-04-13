@@ -85,7 +85,8 @@ def main(config: Namespace) -> None:
     handler(config)
 
 
-if __name__ == "__main__":
+def _start() -> int:
+    """System entrypoint"""
     config = nq.CommunicatorOptions()
     parser = ArgumentParser(prog="nq-test-api", description="net-queue API test")
     parser.add_argument("protocol", choices=list(nq.Protocol), help="Which backend to use")
@@ -98,4 +99,8 @@ if __name__ == "__main__":
     parser.add_argument("--transport-size", type=int, default=config.connection.transport_size, help="Maximum put message size")
     parser.add_argument("--secure", action="store_true", default=False, help="Enable secure communications")
     parser.add_argument("--workers", type=int, default=config.workers, help="Number of workers to use")
-    main(parser.parse_args())
+    return main(parser.parse_args())  # type: ignore
+
+
+if __name__ == "__main__":
+    raise SystemExit(_start())
