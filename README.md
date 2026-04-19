@@ -21,42 +21,42 @@ with nq.new(purpose=nq.Purpose.CLIENT) as queue:
 ```
 
 ## Benchmark
-| Configuration | Used |
-|-|-|
-| SW | Python 3.13.5 |
-| OS | Debian GNU/Linux 13 (trixie) |
-| CPU | 13th Gen Intel® Core™ i5-13400 × 16 |
-| RAM | 64 GB |
+| Configuration | Used |  
+|-|-|  
+| SW | Python 3.13.5 |  
+| OS | Debian GNU/Linux 13 (trixie) |  
+| CPU | 13th Gen Intel® Core™ i5-13400 × 16 |  
+| RAM | 64 GB |  
 
-| Test | Transfer | Operations | Executed |
-|-|-|-|-|
-| Sync | 17.18 GB | 8.0 K | python test/iops.py protocol purpose sync --step-size 0 --max-size 21 --reps 4_000 |
-| Async | 17.18 GB | 8.0 K | python test/iops.py protocol purpose async --step-size 0 --max-size 21 --reps 4_000 |
-| Mix | 8.59 GB | 8.19 K | python test/iops.py protocol purpose async --min-size 8 --step-size 2 --step-expo 0.5 --max-size 32 |
+| Test | Transfer | Operations | Executed |  
+|-|-|-|-|  
+| Sync | 17.18 GB | 8.0 K | python test/iops.py protocol purpose sync --step-size 0 --max-size 21 --reps 4_000 |  
+| Async | 17.18 GB | 8.0 K | python test/iops.py protocol purpose async --step-size 0 --max-size 21 --reps 4_000 |  
+| Mix | 8.59 GB | 8.19 K | python test/iops.py protocol purpose async --min-size 8 --step-size 2 --step-expo 0.5 --max-size 32 |  
 
-| Time | TCP | MQTT | gRPC |
-|-|-|-|-|
-| Sync | 5.3 s | 36.2 s | 23.1 s |
-| Async | 8.5 s | 27.0 s | 20.9 s |
-| Mix | 9.2 s | 23.8 s | 20.2 s |
+| Time | TCP | MQTT | gRPC |  
+|-|-|-|-|  
+| Sync | 5.3 s | 36.2 s | 23.1 s |  
+| Async | 8.5 s | 27.0 s | 20.9 s |  
+| Mix | 9.2 s | 23.8 s | 20.2 s |  
 
-| Transfer | TCP | MQTT | gRPC |
-|-|-|-|-|
-| Sync | 25.24 Gbps | 3.71 Gbps | 5.81 Gbps |
-| Async | 15.77 Gbps | 4.98 Gbps | 6.43 Gbps |
-| Mix | 14.91 Gbps | 5.78 Gbps | 6.79 Gbps |
+| Transfer | TCP | MQTT | gRPC |  
+|-|-|-|-|  
+| Sync | 25.24 Gbps | 3.71 Gbps | 5.81 Gbps |  
+| Async | 15.77 Gbps | 4.98 Gbps | 6.43 Gbps |  
+| Mix | 14.91 Gbps | 5.78 Gbps | 6.79 Gbps |  
 
-| Operations | TCP | MQTT | gRPC |
-|-|-|-|-|
-| Sync | 1500.00 IOPS | 220.85 IOPS | 346.37 IOPS |
-| Async | 939.73 IOPS | 296.78 IOPS | 383.04 IOPS |
-| Mix | 1780.00 IOPS | 689.41 IOPS | 809.01 IOPS |
+| Operations | TCP | MQTT | gRPC |  
+|-|-|-|-|  
+| Sync | 1500.00 IOPS | 220.85 IOPS | 346.37 IOPS |  
+| Async | 939.73 IOPS | 296.78 IOPS | 383.04 IOPS |  
+| Mix | 1780.00 IOPS | 689.41 IOPS | 809.01 IOPS |  
 
-| Memory | TCP | MQTT | gRPC |
-|-|-|-|-|
-| Sync | 21.94 MB | 8377.33 MB | 30.68 MB |
-| Async | 33.39 MB | 7585.78 MB | 41.46 MB |
-| Mix | 8639.32 MB | 10481.62 MB | 8642.59 MB |
+| Memory | TCP | MQTT | gRPC |  
+|-|-|-|-|  
+| Sync | 21.94 MB | 8377.33 MB | 30.68 MB |  
+| Async | 33.39 MB | 7585.78 MB | 41.46 MB |  
+| Mix | 8639.32 MB | 10481.62 MB | 8642.59 MB |  
 
 ## Install
 ### Production
