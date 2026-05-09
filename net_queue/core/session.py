@@ -63,14 +63,14 @@ class Session:
         return f"<{self.__class__.__name__}" \
             f" peer={self.peer!r}" \
             f" status={self.state!r}" \
-            f" ack-queue={len(self._ack_queue)!r}" \
-            f" ack-stream={len(self._ack_stream)!r}" \
-            f" get-queue={self._get_queue.qsize()!r}" \
-            f" get-buffer={None if self._get_buffer is None else len(self._get_buffer)!r}" \
-            f" get-stream={self._put_stream.nbytes!r}" \
-            f" put-queue={self._put_queue.qsize()!r}" \
-            f" put-buffer={None if self._put_buffer is None else len(self._put_buffer)!r}" \
-            f" put-stream={self._put_stream.nbytes!r}" \
+            f" ack-queue={len(self._ack_queue)}" \
+            f" ack-stream={len(self._ack_stream)}" \
+            f" get-queue={self._get_queue.qsize()}" \
+            f" get-buffer={None if self._get_buffer is None else len(self._get_buffer)}" \
+            f" get-stream={self._put_stream.nbytes}" \
+            f" put-queue={self._put_queue.qsize()}" \
+            f" put-buffer={None if self._put_buffer is None else len(self._put_buffer)}" \
+            f" put-stream={self._put_stream.nbytes}" \
             ">"
 
     def get_empty(self) -> bool:
