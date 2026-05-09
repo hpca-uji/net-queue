@@ -12,13 +12,14 @@ from streamview import Stream, byteview
 
 
 __all__ = (
-    "Framer",
-    "BytesSerializer",
+    "StreamFramer",
+    "StreamSerializer",
+    "BufferSerializer",
     "PickleSerializer"
 )
 
 
-class Framer:
+class StreamFramer:
     """
     Stream framer
 
@@ -109,18 +110,32 @@ class Framer:
         return wb
 
 
-class BytesSerializer:
-    """Bytes-stream serializer"""
+class StreamSerializer:
+    """Stream-passthrough serializer"""
 
     __slots__ = ()
 
+    def load(self, data: Stream) -> Stream:
+        """Passthrough stream as-is"""
+        return data
+
+    def dump(self, data: Stream) -> Stream:
+        """Passthrough stream as view"""
+        return data.copy()
+
+
+class BufferSerializer:
+    """Buffer-stream serializer"""
+
+    __slots__ = ()
+
+    def load(self, data: Stream) -> memoryview:
+        """Transform a stream into useful data"""
+        return data.tobuffer()
+
     def dump(self, data: bytes) -> Stream:
         """Transform a data into a stream"""
-        return Stream.frombytes(data)
-
-    def load(self, data: Stream) -> bytes:
-        """Transform a stream into useful data"""
-        return data.tobytes()
+        return Stream.frombuffer(data)
 
 
 class _Unpickler(pickle.Unpickler):
@@ -163,17 +178,6 @@ class PickleSerializer:
         self._load = load
         self._dump = dump
 
-    def dump(self, data) -> Stream:
-        """Transform a data into a stream"""
-        stream = Stream()
-        pickler = pickle.Pickler(file=stream, protocol=self._protocol)
-
-        if self._dump is not None:
-            pickler.persistent_id = self._dump
-
-        pickler.dump(data)
-        return stream
-
     def load(self, data: Stream):
         """Transform a stream into useful data"""
         if self._allow is not None:
@@ -186,6 +190,17 @@ class PickleSerializer:
             unpickler.persistent_load = self._load
 
         return unpickler.load()
+
+    def dump(self, data) -> Stream:
+        """Transform a data into a stream"""
+        stream = Stream()
+        pickler = pickle.Pickler(file=stream, protocol=self._protocol)
+
+        if self._dump is not None:
+            pickler.persistent_id = self._dump
+
+        pickler.dump(data)
+        return stream
 
 
 class _PickleSerializer(PickleSerializer):
@@ -200,4 +215,4 @@ class _PickleSerializer(PickleSerializer):
             pickler.persistent_id = self._dump
 
         pickler.dump(data)
-        return Stream.frombytes(stream.getvalue())
+        return Stream.frombuffer(stream.getvalue())

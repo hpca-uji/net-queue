@@ -1,6 +1,6 @@
 [project]
 name = "net-queue"
-version = "2.4.2"
+version = "2.4.3"
 description = "Easy & fast network communications using queues"
 readme = "README.md"
 license = "GPL-3.0-or-later"
@@ -24,7 +24,7 @@ dependencies = [
     "sabctools>=9.3.0",
     "grpcio>=1.74.0",
     "paho-mqtt>=2.1.0",
-    "streamview>=1.0.0"
+    "streamview>=1.1.0"
 ]
 
 [project.optional-dependencies]

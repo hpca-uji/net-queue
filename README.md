@@ -127,6 +127,10 @@ pip install -e .
     Merged chunks are up to `transport_size` size,
     internally a buffer of this size is preallocated.
 
+  - `drop_oldest: bool = True`
+
+    When queue is full, drop oldest message, instead of newest.
+
   - `transport_size: int = 16 * 1024 ** 2` (16 MiB)
 
     Maximum chunk size to send to underlying backend before splitting.
@@ -289,9 +293,9 @@ pip install -e .
     Example: `["builtins"]` for a whole module  
     Example: `["uuid.UUID"]` for a single class  
 
-- `utils.stream.BytesSerializer(...)`
+- `utils.stream.BufferSerializer(...)`
 
-  Bytes-stream serializer
+  Buffer-stream serializer
 
   - `load(data: bytes) -> Stream`
 
@@ -300,6 +304,20 @@ pip install -e .
   - `dump(data: Stream) -> bytes`
 
     Transform a stream into bytes
+
+- `utils.stream.StreamSerializer(...)`
+
+  Stream-passthrough serializer
+
+  - `load(data: Stream) -> Stream`
+
+    Passthrough stream as-is
+
+  - `dump(data: Stream) -> Stream`
+
+    Passthrough stream as view
+
+- 
 
 ## Notes
 ### Communication conventions

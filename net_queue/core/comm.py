@@ -6,7 +6,7 @@ import abc
 import uuid
 import warnings
 import threading
-from queue import SimpleQueue
+from queue import Empty, SimpleQueue
 from concurrent.futures import Future, ThreadPoolExecutor
 
 from bidict import bidict
@@ -67,7 +67,7 @@ class Communicator[T](abc.ABC):
         if SessionState.WRITABLE in session.state:
             warnings.warn("Sending session ini on writable stream", RuntimeWarning)
         session.state |= SessionState.WRITABLE
-        stream = Stream.frombytes(self.id.bytes)
+        stream = Stream.frombuffer(self.id.bytes)
         self._put(stream, peer)
 
     def _session_fin(self, peer: uuid.UUID) -> None:
@@ -76,7 +76,7 @@ class Communicator[T](abc.ABC):
         if SessionState.WRITABLE not in session.state:
             warnings.warn("Sending session fin on unwritable stream", RuntimeWarning)
         session.state &= ~SessionState.WRITABLE
-        stream = Stream.frombytes(self.id.bytes)
+        stream = Stream.frombuffer(self.id.bytes)
         self._put(stream, peer)
 
     def _handle_session_ini(self, peer: uuid.UUID, id: uuid.UUID) -> None:
@@ -139,11 +139,20 @@ class Communicator[T](abc.ABC):
                     stream.writechunk(chunk)
 
             # Queue limits
-            if session._get_queue.qsize() < self.options.connection.queue_size:
-                session._get_queue.put(stream)
-                self._get_events.put(peer)
-            else:
+            if session._get_queue.qsize() >= self.options.connection.queue_size:
                 warnings.warn(f"Dropping data for {peer} (queue full)")
+                if not self.options.connection.drop_oldest:
+                    continue
+                try:
+                    self._get_events.get_nowait()
+                except Empty:
+                    pass
+                else:
+                    session._get_queue.get_nowait()
+
+            # Commit stream
+            session._get_queue.put(stream)
+            self._get_events.put(peer)
 
     def _put_commit(self, peer: uuid.UUID, size: int) -> None:
         """Commit size bytes as transmitted and resolve callbacks"""

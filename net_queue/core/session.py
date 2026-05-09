@@ -7,7 +7,7 @@ from collections import abc as col_abc, deque
 from streamview import Stream, byteview
 
 from net_queue.utils import futures
-from net_queue.utils.stream import Framer
+from net_queue.utils.stream import StreamFramer
 from net_queue.core import CommunicatorOptions, SessionState
 
 
@@ -33,7 +33,7 @@ class Session:
         self.peer = options.id
 
         # Helpers
-        self._framer = Framer()
+        self._framer = StreamFramer()
 
         self._ack_queue = dict[Stream, Future]()
         self._ack_stream = deque[tuple[int, Future]]()
@@ -117,7 +117,7 @@ class Session:
             else:
                 self._get_size = size
                 size = min(size, self._options.connection.message_size)
-                if len(self._get_stream.peekchunk()) >= size:
+                if self._get_stream and len(self._get_stream[0]) >= size:
                     size = 0
                 self._get_buffer = byteview(bytearray(size))
 
@@ -141,7 +141,7 @@ class Session:
 
     def put_optimize(self) -> None:
         """Optimize put buffer"""
-        if self._put_stream.nchunks <= 1 or len(self._put_stream.peekchunk()) >= self._options.connection.transport_size:
+        if len(self._put_stream) <= 1 or len(self._put_stream[0]) >= self._options.connection.transport_size:
             return
 
         assert self._put_buffer is not None, "Put buffer missing!"

@@ -1,9 +1,11 @@
 """TCP package"""
 
+import os
 import ssl
 import socket
 import warnings
 import selectors
+import itertools
 from collections import abc
 from concurrent import futures
 from queue import Empty, SimpleQueue
@@ -11,7 +13,9 @@ from traceback import format_exception
 
 from net_queue.core.comm import Communicator
 from net_queue.core import CommunicatorOptions
+from net_queue.core.session import Session
 from net_queue.utils.futures import background, warn_exception
+from streamview import Stream
 
 
 __all__ = (
@@ -20,6 +24,13 @@ __all__ = (
 
 
 type Task = abc.Callable[[], None]
+
+
+# Constants
+try:
+    SC_IOV_MAX = os.sysconf("SC_IOV_MAX")
+except Exception:
+    SC_IOV_MAX = None
 
 
 # Sentinel objects
@@ -42,6 +53,10 @@ class Protocol(Communicator[socket.socket]):
         self._loop_thread = background(self._handle_selector_loop)
         self._loop_thread.add_done_callback(warn_exception)
         self._task_queue = SimpleQueue[Task]()
+
+        # Send fast-path
+        if not self.options.security and getattr(socket.socket, "sendmsg"):
+            self._socket_send = self._socket_send_batch
 
         # Receive fast-path
         if self.options.security:
@@ -149,6 +164,24 @@ class Protocol(Communicator[socket.socket]):
         self._process_gets(peer)
         peer = session.peer
 
+    @staticmethod
+    def _socket_send(comm: socket.socket, session: Session) -> int:
+        """Send an optimally-sized chunk over socket"""
+        session.put_optimize()
+        with session._put_stream[0] as view:
+            try:
+                size = comm.send(view)
+            except (ssl.SSLWantReadError, ssl.SSLWantWriteError):
+                pass
+            return session._put_stream.seek(size)
+
+    @staticmethod
+    def _socket_send_batch(comm: socket.socket, session: Session) -> int:
+        """Send a chunked batch over socket"""
+        views = itertools.islice(session._put_stream.chunks, SC_IOV_MAX)
+        size = comm.sendmsg(views)
+        return session._put_stream.seek(size)
+
     def _handle_send(self, comm: socket.socket) -> None:
         """Send communication"""
         peer = self._set_default_peer(comm)
@@ -158,13 +191,7 @@ class Protocol(Communicator[socket.socket]):
         session.put_flush_queue()
         if not session._put_stream:
             return
-        with session.put_read() as view:
-            try:
-                size = comm.send(view)
-            except (ssl.SSLWantReadError, ssl.SSLWantWriteError):
-                pass
-            if size < len(view):
-                session._put_stream.unreadchunk(view[size:])
+        size = self._socket_send(comm, session)
         self._put_commit(peer, size)
 
     def _close(self) -> None:

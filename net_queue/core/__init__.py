@@ -56,6 +56,7 @@ class ConnectionOptions:
     """Connection options"""
     get_merge: bool = True
     put_merge: bool = True
+    drop_oldest: bool = True
     transport_size: int = 16 * 1024 ** 2
     queue_size: int = 1 * 1024 ** 3
     message_size: int = 1 * 1024 ** 4
