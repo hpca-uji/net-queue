@@ -50,8 +50,8 @@ class StreamFramer:
             raise BlockingIOError()
 
         # Read size
-        with transport.read(rb) as chunk:
-            return self._header.unpack(chunk)[0]
+        with transport.read(rb) as b:
+            return self._header.unpack(b)[0]
 
     def pack_header(self, transport: Stream, size: int) -> int:
         """Inserts header into packer, returns bytes written"""
@@ -67,8 +67,8 @@ class StreamFramer:
             raise BlockingIOError()
 
         # Read size
-        chunk = transport.read(rb)
-        rb = self._header.unpack(chunk)[0]
+        b = transport.read(rb)
+        rb = self._header.unpack(b)[0]
 
         # Compute limits
         if size >= 0 and size < rb:
@@ -79,23 +79,23 @@ class StreamFramer:
 
         # Check if data available
         if transport.nbytes < rb:
-            transport.unreadchunk(chunk)
+            transport.unreadbuffer(b)
             raise BlockingIOError()
         else:
-            chunk.release()
+            b.release()
 
         # Ensure contained reads
         upper = Stream()
         while rb > 0:
-            chunk = transport.read1(rb)
-            upper.writechunk(chunk)
-            rb -= len(chunk)
+            b = transport.read1(rb)
+            upper.writebuffer(b)
+            rb -= len(b)
 
         # Write truncated header
         if extra > 0:
             warnings.warn("Truncated stream!", ResourceWarning)
             pack = self._header.pack(extra)
-            transport.unreadchunk(byteview(pack))
+            transport.unreadbuffer(byteview(pack))
 
         # Return stream
         return upper
@@ -106,7 +106,7 @@ class StreamFramer:
         wb = data.nbytes
         pack = self._header.pack(wb)
         wb += transport.write(pack)
-        transport.writechunks(data.readchunks())
+        transport.writebuffers(data.readbuffers())
         return wb
 
 
@@ -130,11 +130,11 @@ class BufferSerializer:
     __slots__ = ()
 
     def load(self, data: Stream) -> memoryview:
-        """Transform a stream into useful data"""
+        """Transform a stream into a buffer (may copy)"""
         return data.tobuffer()
 
-    def dump(self, data: bytes) -> Stream:
-        """Transform a data into a stream"""
+    def dump(self, data: abc.Buffer) -> Stream:
+        """Transform a buffer into a stream"""
         return Stream.frombuffer(data)
 
 
@@ -205,6 +205,11 @@ class PickleSerializer:
 
 class _PickleSerializer(PickleSerializer):
     """Serializer that emulates a pickle behavior"""
+
+    def load(self, data: Stream):
+        """Transform a stream into useful data"""
+        stream = BytesIO(data.tobuffer())
+        return super().load(stream)  # type: ignore
 
     def dump(self, data) -> Stream:
         """Transform a data into a stream"""

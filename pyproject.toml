@@ -24,7 +24,7 @@ dependencies = [
     "sabctools>=9.3.0",
     "grpcio>=1.74.0",
     "paho-mqtt>=2.1.0",
-    "streamview>=1.1.0"
+    "streamview>=2.0.0"
 ]
 
 [project.optional-dependencies]

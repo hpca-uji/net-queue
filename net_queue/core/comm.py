@@ -119,8 +119,8 @@ class Communicator[T](abc.ABC):
 
             # Handshake-like
             if stream.nbytes == id_size:
-                chunk = stream.read()
-                id = uuid.UUID(bytes=chunk.tobytes())
+                b = stream.read()
+                id = uuid.UUID(bytes=bytes(b))
 
                 # Handshake INI
                 if session.peer == self.id:
@@ -136,7 +136,7 @@ class Communicator[T](abc.ABC):
 
                 # Data (handshake-like)
                 else:
-                    stream.writechunk(chunk)
+                    stream.writebuffer(b)
 
             # Queue limits
             if session._get_queue.qsize() >= self.options.connection.queue_size:
@@ -301,7 +301,7 @@ class Communicator[T](abc.ABC):
 
     def _close(self) -> None:
         """Communicator finalizer"""
-        # Unlock inflight external API:
+        # Unlock inflight external API
         for _ in range(threading.active_count()):
             self._get_events.put(self.id)
         self._pool.shutdown()

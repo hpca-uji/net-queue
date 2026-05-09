@@ -7,6 +7,7 @@ import warnings
 import selectors
 import itertools
 from collections import abc
+from functools import partial
 from concurrent import futures
 from queue import Empty, SimpleQueue
 from traceback import format_exception
@@ -15,7 +16,6 @@ from net_queue.core.comm import Communicator
 from net_queue.core import CommunicatorOptions
 from net_queue.core.session import Session
 from net_queue.utils.futures import background, warn_exception
-from streamview import Stream
 
 
 __all__ = (
@@ -30,7 +30,7 @@ type Task = abc.Callable[[], None]
 try:
     SC_IOV_MAX = os.sysconf("SC_IOV_MAX")
 except Exception:
-    SC_IOV_MAX = None
+    SC_IOV_MAX = 16  # safe fallback
 
 
 # Sentinel objects
@@ -55,7 +55,7 @@ class Protocol(Communicator[socket.socket]):
         self._task_queue = SimpleQueue[Task]()
 
         # Send fast-path
-        if not self.options.security and getattr(socket.socket, "sendmsg"):
+        if not self.options.security and hasattr(socket.socket, "sendmsg"):
             self._socket_send = self._socket_send_batch
 
         # Receive fast-path
@@ -69,20 +69,17 @@ class Protocol(Communicator[socket.socket]):
         else:
             self._socket_recv_into = socket.socket.recv_into
 
-    def _modify_selector(self, fileobj, events) -> None:
-        """Modify registered events"""
+    def _handle_modify_selector(self, fileobj, events):
+        """Handle selector modification"""
         try:
             key = self._selector.get_key(fileobj)
+            self._selector.modify(key.fd, events, key.data)
         except ValueError:
             return  # already removed
 
-        def callback():
-            try:
-                self._selector.modify(key.fd, events, key.data)
-            except KeyError:
-                return  # already removed
-
-        self._task_queue.put(callback)
+    def _modify_selector(self, fileobj, events) -> None:
+        """Modify registered events"""
+        self._task_queue.put(partial(self._handle_modify_selector, fileobj, events))
 
     def _notify_selector(self) -> None:
         """Interrupt selector loop"""
@@ -166,7 +163,7 @@ class Protocol(Communicator[socket.socket]):
 
     @staticmethod
     def _socket_send(comm: socket.socket, session: Session) -> int:
-        """Send an optimally-sized chunk over socket"""
+        """Send an optimally-sized buffer over socket"""
         session.put_optimize()
         with session._put_stream[0] as view:
             try:
@@ -177,8 +174,8 @@ class Protocol(Communicator[socket.socket]):
 
     @staticmethod
     def _socket_send_batch(comm: socket.socket, session: Session) -> int:
-        """Send a chunked batch over socket"""
-        views = itertools.islice(session._put_stream.chunks, SC_IOV_MAX)
+        """Send a buffer batch over socket"""
+        views = itertools.islice(session._put_stream.buffers, SC_IOV_MAX)
         size = comm.sendmsg(views)
         return session._put_stream.seek(size)
 

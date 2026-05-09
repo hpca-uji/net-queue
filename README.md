@@ -36,21 +36,21 @@ with nq.new(purpose=nq.Purpose.CLIENT) as queue:
 
 | Time | TCP | MQTT | gRPC |  
 |-|-|-|-|  
-| Sync | 5.3 s | 36.2 s | 23.1 s |  
-| Async | 8.5 s | 27.0 s | 20.9 s |  
-| Mix | 9.2 s | 23.8 s | 20.2 s |  
+| Sync | 4.0 s | 36.2 s | 23.1 s |  
+| Async | 4.6 s | 27.0 s | 20.9 s |  
+| Mix | 5.4 s | 23.8 s | 20.2 s |  
 
 | Transfer | TCP | MQTT | gRPC |  
 |-|-|-|-|  
-| Sync | 25.24 Gbps | 3.71 Gbps | 5.81 Gbps |  
-| Async | 15.77 Gbps | 4.98 Gbps | 6.43 Gbps |  
-| Mix | 14.91 Gbps | 5.78 Gbps | 6.79 Gbps |  
+| Sync | 33.71 Gbps | 3.71 Gbps | 5.81 Gbps |  
+| Async | 29.25 Gbps | 4.98 Gbps | 6.43 Gbps |  
+| Mix | 25.65 Gbps | 5.78 Gbps | 6.79 Gbps |  
 
 | Operations | TCP | MQTT | gRPC |  
 |-|-|-|-|  
-| Sync | 1500.00 IOPS | 220.85 IOPS | 346.37 IOPS |  
-| Async | 939.73 IOPS | 296.78 IOPS | 383.04 IOPS |  
-| Mix | 1780.00 IOPS | 689.41 IOPS | 809.01 IOPS |  
+| Sync | 2010.00 IOPS | 220.85 IOPS | 346.37 IOPS |  
+| Async | 1740.00 IOPS | 296.78 IOPS | 383.04 IOPS |  
+| Mix | 3050.00 IOPS | 689.41 IOPS | 809.01 IOPS |  
 
 | Memory | TCP | MQTT | gRPC |  
 |-|-|-|-|  
@@ -113,18 +113,18 @@ pip install -e .
 
   - `get_merge: bool = True`
 
-    Merge message chunks to a contiguous memory block during receiving,
+    Merge message buffers to a contiguous memory block during receiving,
     this typically improves performance when processing large messages.
 
-    Merged chunks are up to `message_size` size,
+    Merged buffers are up to `message_size` size,
     internally a buffer of this size is dynamically allocated.
 
   - `put_merge: bool = True`
 
-    Merge message chunks to a contiguous memory block during sending,
+    Merge message buffers to a contiguous memory block during sending,
     this typically improves performance when processing small messages.
 
-    Merged chunks are up to `transport_size` size,
+    Merged buffers are up to `transport_size` size,
     internally a buffer of this size is preallocated.
 
   - `drop_oldest: bool = True`
@@ -133,7 +133,7 @@ pip install -e .
 
   - `transport_size: int = 16 * 1024 ** 2` (16 MiB)
 
-    Maximum chunk size to send to underlying backend before splitting.
+    Maximum buffer size to send to underlying backend before splitting.
 
     Selection: Maximum according to transport limits (less +streaming/management, more +bursty/merging).  
     Default: Balanced CPU/RAM usage.  
@@ -148,7 +148,7 @@ pip install -e .
   - `message_size: int = 1 ** 1024 * 4` (1 TiB)
 
     Maximum message size to deserialize before attempting splitting.
-    If the deserializer does not supports arbitrary sub-chunks,
+    If the deserializer does not supports arbitrary sub-buffers,
     this setting may raise exceptions on message extraction.
 
     Selection: Maximum according to memory limits.  
@@ -276,11 +276,11 @@ pip install -e .
 
   ---
 
-  - `load(data: Any) -> Stream`
+  - `load(data: Stream) -> Any`
 
     Transform a data into a stream
 
-  - `dump(data: Stream) -> Any`
+  - `dump(data: Any) -> Stream`
 
     Transform a stream into useful data
 
@@ -297,13 +297,13 @@ pip install -e .
 
   Buffer-stream serializer
 
-  - `load(data: bytes) -> Stream`
+  - `load(data: Stream) -> memoryview`
 
-    Transform bytes into a stream
+    Transform a stream into a buffer (may copy)
 
-  - `dump(data: Stream) -> bytes`
+  - `dump(data: Buffer) -> Stream`
 
-    Transform a stream into bytes
+    Transform a buffer into a stream
 
 - `utils.stream.StreamSerializer(...)`
 
@@ -382,7 +382,7 @@ The MQTT library handles communications single-threaded, therefore operations on
 
 Peer-groups and global communications are not optimized.
 
-First, chunked message ordering must be resolved. Single chunk order it is guaranteed by the protocol, even on with different topics. Second, peer-groups could be implemented using grouping requests that generate new UUID per group. This would reduce also reduce load on the broker.
+First, buffered message ordering must be resolved. Single buffer order it is guaranteed by the protocol, even on with different topics. Second, peer-groups could be implemented using grouping requests that generate new UUID per group. This would reduce also reduce load on the broker.
 
 ### gRPC
 Library: grpcio  

@@ -75,11 +75,11 @@ class Session:
 
     def get_empty(self) -> bool:
         """Is get connection flushed"""
-        return not self._get_queue and not self._get_stream and self._get_buffer is None
+        return not self._get_stream and not self._get_queue.qsize() and self._get_buffer is None
 
     def put_empty(self) -> bool:
         """Is put connection flushed"""
-        return not self._put_queue and not self._put_stream
+        return not self._put_stream and not self._put_queue.qsize()
 
     def get(self) -> Stream:
         """Unpack from get buffer"""
@@ -134,10 +134,10 @@ class Session:
                     self._framer.pack_header(stream, self._get_size)
                     stream.write(self._get_buffer.obj)
                     self._get_buffer = None
-                chunks = list(stream.readchunks())
+                bs = list(stream.readbuffers())
 
-            for chunk in reversed(chunks):
-                self._get_stream.unreadchunk(chunk)
+            for b in reversed(bs):
+                self._get_stream.unreadbuffer(b)
 
     def put_optimize(self) -> None:
         """Optimize put buffer"""
@@ -146,7 +146,7 @@ class Session:
 
         assert self._put_buffer is not None, "Put buffer missing!"
         merge_size = self._put_stream.readinto(self._put_buffer)
-        self._put_stream.unreadchunk(self._put_buffer[:merge_size])
+        self._put_stream.unreadbuffer(self._put_buffer[:merge_size])
 
     def put_commit(self, size: int) -> col_abc.Iterable[Future[None]]:
         """Mark size's bytes as fully transmitted (or freeable)"""
