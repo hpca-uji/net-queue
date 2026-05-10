@@ -27,7 +27,7 @@ def get_options(config: Namespace) -> nq.CommunicatorOptions:
         ),
         security=nq.SecurityOptions(
             key=Path("key.pem"),
-            certificate=Path("cert.pem")
+            cert=Path("cert.pem")
         ) if config.secure else None,
         workers=config.workers
     )

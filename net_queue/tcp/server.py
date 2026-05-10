@@ -29,10 +29,10 @@ class Communicator(Protocol, Server[socket.socket]):
         self._comm = socket.create_server(self.options.netloc, reuse_port=True)
 
         if self.options.security:
-            if self.options.security.certificate is None or self.options.security.key is None:
+            if self.options.security.cert is None or self.options.security.key is None:
                 raise RuntimeError("SSL certificate or key not provided")
-            context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH, cafile=self.options.security.certificate)
-            context.load_cert_chain(certfile=self.options.security.certificate, keyfile=self.options.security.key)
+            context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH, cafile=self.options.security.cert)
+            context.load_cert_chain(certfile=self.options.security.cert, keyfile=self.options.security.key)
             self._comm = context.wrap_socket(self._comm, server_side=True, do_handshake_on_connect=True)
 
         self._selector.register(self._comm, selectors.EVENT_READ, self._new_connection)

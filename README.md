@@ -177,7 +177,7 @@ pip install -e .
 
     Required for servers, for clients always `None`.
 
-  - `certificate: Path | None = None`
+  - `cert: Path | None = None`
 
     Server's certificate chain or client's trust chain
 
@@ -189,7 +189,7 @@ pip install -e .
 
   - `ini: Callable[[UUID], None] = ...`
 
-    New peer connection event handler
+    Peer connection event handler
 
   - `fin: Callable[[UUID], None] = ...`
 

@@ -74,7 +74,7 @@ class SerializationOptions:
 class SecurityOptions:
     """Security options"""
     key: Path | None = None
-    certificate: Path | None = None
+    cert: Path | None = None
 
 
 @dataclass(order=False, slots=True, frozen=True)
