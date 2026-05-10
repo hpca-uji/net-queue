@@ -98,6 +98,7 @@ pip install -e .
   - `connection: ConnectionOptions = ConnectionOptions()`
   - `serialization: SerializationOptions = SerializationOptions()`
   - `security: SecurityOptions | None = None`
+  - `events: EventOptions = EventOptions()`
   - `workers: int = 1`
 
     Maximum number of threads to use for connection handling.
@@ -181,6 +182,18 @@ pip install -e .
     Server's certificate chain or client's trust chain
 
     Required for servers, for clients if not provided, it defaults to the system's chain.
+
+- `EventOptions(...)`
+
+  Event options
+
+  - `ini: Callable[[UUID], None] = ...`
+
+    New peer connection event handler
+
+  - `fin: Callable[[UUID], None] = ...`
+
+    Peer disconnection event handler
 
 - `NetworkLocation(...)`
 

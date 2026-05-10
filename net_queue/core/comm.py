@@ -49,7 +49,7 @@ class Communicator[T](abc.ABC):
 
         thread_prefix = f"{__name__}.{self.__class__.__qualname__}:{id(self)}"
 
-        self._put_queue = queue(f"{thread_prefix}.put")
+        self._event_queue = queue(f"{thread_prefix}.event")
         self._pool = ThreadPoolExecutor(max_workers=self.options.workers, thread_name_prefix=f"{thread_prefix}.worker")
 
     def __repr__(self) -> str:
@@ -103,12 +103,16 @@ class Communicator[T](abc.ABC):
             # Update communicator ID association
             self._comms.inverse[comm] = id
 
+        self._event_queue.submit(self.options.events.ini, session.peer).add_done_callback(futures.warn_exception)
+
     def _handle_session_fin(self, peer: uuid.UUID, id: uuid.UUID) -> None:
         """Handle session finalize message"""
         session = self._sessions[peer]
         if SessionState.READABLE not in session.state:
             warnings.warn("Received session fin on unreadable stream", RuntimeWarning)
         session.state &= ~SessionState.READABLE
+
+        self._event_queue.submit(self.options.events.fin, session.peer).add_done_callback(futures.warn_exception)
 
     def _process_gets(self, peer: uuid.UUID) -> None:
         """Handle pending get packets"""
@@ -159,7 +163,7 @@ class Communicator[T](abc.ABC):
         session = self._sessions[peer]
 
         for future in session.put_commit(size):
-            self._put_queue.submit(futures.set_result, future, None).add_done_callback(futures.warn_exception)
+            self._event_queue.submit(futures.set_result, future, None).add_done_callback(futures.warn_exception)
 
     def _set_default_peer(self, comm: T) -> uuid.UUID:
         """Get associated peer or create a new one if missing"""
@@ -305,7 +309,7 @@ class Communicator[T](abc.ABC):
         for _ in range(threading.active_count()):
             self._get_events.put(self.id)
         self._pool.shutdown()
-        self._put_queue.shutdown()
+        self._event_queue.shutdown()
 
     def close(self) -> None:
         """Close the communicator"""

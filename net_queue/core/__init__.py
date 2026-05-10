@@ -25,6 +25,7 @@ __all__ = (
 )
 
 
+_event = lambda uuid: None
 _serializer = PickleSerializer()
 
 
@@ -77,6 +78,13 @@ class SecurityOptions:
 
 
 @dataclass(order=False, slots=True, frozen=True)
+class EventOptions:
+    """Event options"""
+    ini: col_abc.Callable[[uuid.UUID], None] = _event
+    fin: col_abc.Callable[[uuid.UUID], None] = _event
+
+
+@dataclass(order=False, slots=True, frozen=True)
 class CommunicatorOptions:
     """Communicator options"""
     id: uuid.UUID = dataclasses.field(default_factory=uuid.uuid4)
@@ -84,4 +92,5 @@ class CommunicatorOptions:
     connection: ConnectionOptions = ConnectionOptions()
     serialization: SerializationOptions = SerializationOptions()
     security: SecurityOptions | None = None
+    events: EventOptions = EventOptions()
     workers: int = 1
