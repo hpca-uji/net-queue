@@ -384,44 +384,64 @@ Close
 Library: socket  
 Parallelism: Thread pool (n+1+1 threads)  
 
+TCP due to is streaming nature and some performance limits, does not follow the transport size option.
+
 ### MQTT
 Library: paho-mqtt  
 Options: tcp transport, 0 QOS, 3.1.1 protocol  
 Parallelism: Single threaded (1+1+1 threads)  
 
-MQTT broker implementations are not common, so the server provided here is actually another client. Therefore the address and port provided to both, the client and server, should be the one of the actual broker, not where the server is running.
+MQTT broker implementations are not common, so the server provided here is actually another client.
+Therefore the address and port provided to both, the client and server, should be the one of the actual broker,
+not where the server is running.
 
-The MQTT library handles communications single-threaded, therefore operations on related callbacks are limited to pushing or pulling data from queues without blocking, so all operations are minimal and fast.
+The MQTT library handles communications single-threaded, therefore operations on related callbacks are limited
+to pushing or pulling data from queues without blocking, so all operations are minimal and fast.
 
 Peer-groups and global communications are not optimized.
 
-First, buffered message ordering must be resolved. Single buffer order it is guaranteed by the protocol, even on with different topics. Second, peer-groups could be implemented using grouping requests that generate new UUID per group. This would reduce also reduce load on the broker.
+First, buffered message ordering must be resolved. Single buffer order it is guaranteed by the protocol,
+even on with different topics. Second, peer-groups could be implemented using grouping requests that generate new UUID per group.
+This would reduce also reduce load on the broker.
 
 ### gRPC
 Library: grpcio  
 Options: compression disabled, protobuf disabled  
 Parallelism: Thread pool (n+1+? threads)  
 
-gRPC does not conform well to a async send & async receive model, it expects remote procedure calls to be called, processed and responded. To simulate this model we created a bidirectional streaming procedure. Sent data is queued at the server, received data is polled until available.
+gRPC does not conform well to a async send & async receive model, it expects remote procedure calls to be called,
+processed and responded. To simulate this model we created a bidirectional streaming procedure.
+Sent data is queued at the server, received data is polled until available.
 
 This also means there is no eager client reception or eager server send, so polling is required.
 
-Polling is implemented with a exponential backoff time and a limit. The gRPC library queues requests, so requests would always be replied in a timely manner, but we do not want to hogg the CPU or network with useless requests.
+Polling is implemented with a exponential backoff time and a limit. The gRPC library queues requests,
+so requests would always be replied in a timely manner, but we do not want to hogg the CPU or network with useless requests.
 
-It is important to not hold the procedures indefinitely, since this could starve the server of threads. Additionally, if a streaming direction was already closed, messages could end up queued forever if not restarted.
+It is important to not hold the procedures indefinitely, since this could starve the server of threads.
+Additionally, if a streaming direction was already closed, messages could end up queued forever if not restarted.
 
-To alleviate network latency queues are flushed unidirectionally in turns, instead of interleaving directions. However on high throughput applications this could lead to a very bursty receive pattern.
+To alleviate network latency queues are flushed unidirectionally in turns, instead of interleaving directions.
+However on high throughput applications this could lead to a very bursty receive pattern.
 
 ## Planned
-Implement reconnection support. The protocol already has support for it, server support is done, clients can reconnect but can not yet disconnect without flushing.
+Implement reconnection support.
+The protocol already has support for it, server support is done,
+clients can reconnect but can not yet disconnect without flushing.
 
-Implement two-way connection expiration and keep-alives. There is no reliable way to track connection drops between communication implementations. Most of them end up with memory leaks. If desired expiration periods could be long and automatic client reconnections could be allowed, enabling MQTT-like reliability without the cost.
+Implement two-way connection expiration and keep-alives.
+There is no reliable way to track connection drops between communication implementations.
+Most of them end up with memory leaks. If desired expiration periods could be long and
+automatic client reconnections could be allowed, enabling MQTT-like reliability without the cost.
 
-Implement message cancelling support. It is already plausible to cancel a message if it is queued but not buffered. However changing the future from a pending state to running would cause a lock acquire.
+Implement message cancelling support. It is already plausible to cancel a message if it is queued but not buffered.
+However changing the future from a pending state to running would cause a lock acquire.
 
 ## Acknowledgments
 The library has been partially supported by:
-- Project PID2023-146569NB-C22 "Inteligencia sostenible en el Borde-UJI" funded by the Spanish Ministry of Science, Innovation and Universities.
-- Project C121/23 Convenio "CIBERseguridad post-Cuántica para el Aprendizaje FEderado en procesadores de bajo consumo y aceleradores (CIBER-CAFE)" funded by the Spanish National Cybersecurity Institute (INCIBE).
+- Project PID2023-146569NB-C22 "Inteligencia sostenible en el Borde-UJI"
+  funded by the Spanish Ministry of Science, Innovation and Universities.
+- Project C121/23 Convenio "CIBERseguridad post-Cuántica para el Aprendizaje FEderado en procesadores de bajo consumo y aceleradores (CIBER-CAFE)"
+  funded by the Spanish National Cybersecurity Institute (INCIBE).
 
 ![](footer.jpg)

@@ -55,7 +55,7 @@ class Protocol(Communicator[socket.socket]):
         self._task_queue = SimpleQueue[Task]()
 
         # Send fast-path
-        if not self.options.security and hasattr(socket.socket, "sendmsg"):
+        if self.options.connection.put_merge and not self.options.security and hasattr(socket.socket, "sendmsg"):
             self._socket_send = self._socket_send_batch
 
         # Receive fast-path
