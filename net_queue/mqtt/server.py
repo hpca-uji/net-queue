@@ -63,7 +63,7 @@ class Communicator(Protocol, Server[str]):
 
         size = 0
         session.put_flush_queue()
-        for view in session.put_flush_buffer():
+        for view in session.put_flush_stream():
             with view:
                 self._publish(f"s2c/{comm}", bytes(view))
                 size += len(view)
@@ -74,7 +74,6 @@ class Communicator(Protocol, Server[str]):
 
     def _close(self) -> None:
         """Close the server"""
-
         # Wait peers to drain
         with self._lock:
             while self._comms:

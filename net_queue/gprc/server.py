@@ -77,7 +77,6 @@ class Communicator(Protocol[str], Server[str]):
 
     def _close(self) -> None:
         """Close the server"""
-
         # Wait peers to drain
         with self._lock:
             while self._comms:

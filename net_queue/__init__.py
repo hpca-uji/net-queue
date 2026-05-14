@@ -22,6 +22,7 @@ __all__ = (
 
 class Protocol(enum.StrEnum):
     """Communication protocol"""
+
     TCP = enum.auto()
     MQTT = enum.auto()
     GRPC = enum.auto()
@@ -29,6 +30,7 @@ class Protocol(enum.StrEnum):
 
 class Purpose(enum.StrEnum):
     """Communication purpose"""
+
     SERVER = enum.auto()
     CLIENT = enum.auto()
 

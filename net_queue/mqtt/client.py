@@ -59,7 +59,7 @@ class Communicator(Protocol, Client[str]):
 
         size = 0
         session.put_flush_queue()
-        for view in session.put_flush_buffer():
+        for view in session.put_flush_stream():
             with view:
                 self._publish(f"c2s/{self.id.hex}", bytes(view))
                 size += len(view)

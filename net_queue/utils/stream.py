@@ -45,57 +45,57 @@ class StreamFramer:
     def unpack_header(self, transport: Stream) -> int:
         """Extracts header from packer (raises BlockingIOError if no stream)"""
         # Check if size available
-        rb = self._header.size
-        if transport.nbytes < rb:
+        read = self._header.size
+        if transport.nbytes < read:
             raise BlockingIOError()
 
         # Read size
-        with transport.read(rb) as b:
+        with transport.read(read) as b:
             return self._header.unpack(b)[0]
 
     def pack_header(self, transport: Stream, size: int) -> int:
         """Inserts header into packer, returns bytes written"""
-        pack = self._header.pack(size)
-        size = transport.write(pack)
+        header = self._header.pack(size)
+        size = transport.write(header)
         return size
 
     def unpack(self, transport: Stream, size: int = -1) -> Stream:
         """Extracts stream from packer (raises BlockingIOError if no stream)"""
         # Check if size available
-        rb = self._header.size
-        if transport.nbytes < rb:
+        read = self._header.size
+        if transport.nbytes < read:
             raise BlockingIOError()
 
         # Read size
-        b = transport.read(rb)
-        rb = self._header.unpack(b)[0]
+        view = transport.read(read)
+        read = self._header.unpack(view)[0]
 
         # Compute limits
-        if size >= 0 and size < rb:
-            extra = rb - size
-            rb = size
+        if size >= 0 and size < read:
+            extra = read - size
+            read = size
         else:
             extra = 0
 
         # Check if data available
-        if transport.nbytes < rb:
-            transport.unreadbuffer(b)
+        if transport.nbytes < read:
+            transport.unreadview(view)
             raise BlockingIOError()
         else:
-            b.release()
+            view.release()
 
         # Ensure contained reads
         upper = Stream()
-        while rb > 0:
-            b = transport.read1(rb)
-            upper.writebuffer(b)
-            rb -= len(b)
+        while read > 0:
+            view = transport.read1(read)
+            upper.writeview(view)
+            read -= len(view)
 
         # Write truncated header
         if extra > 0:
             warnings.warn("Truncated stream!", ResourceWarning)
-            pack = self._header.pack(extra)
-            transport.unreadbuffer(byteview(pack))
+            header = self._header.pack(extra)
+            transport.unreadview(byteview(header))
 
         # Return stream
         return upper
@@ -103,11 +103,11 @@ class StreamFramer:
     def pack(self, transport: Stream, data: Stream) -> int:
         """Inserts stream into packer, returns bytes written"""
         # Ensure contained writes
-        wb = data.nbytes
-        pack = self._header.pack(wb)
-        wb += transport.write(pack)
-        transport.writebuffers(data.readbuffers())
-        return wb
+        written = data.nbytes
+        header = self._header.pack(written)
+        written += transport.write(header)
+        transport.writeviews(data.readviews())
+        return written
 
 
 class StreamSerializer:
@@ -130,8 +130,8 @@ class BufferSerializer:
     __slots__ = ()
 
     def load(self, data: Stream) -> memoryview:
-        """Transform a stream into a buffer (may copy)"""
-        return data.tobuffer()
+        """Transform a stream into a contiguous buffer (may copy)"""
+        return data.toview()
 
     def dump(self, data: abc.Buffer) -> Stream:
         """Transform a buffer into a stream"""
@@ -208,7 +208,7 @@ class _PickleSerializer(PickleSerializer):
 
     def load(self, data: Stream):
         """Transform a stream into useful data"""
-        stream = BytesIO(data.tobuffer())
+        stream = BytesIO(data.toview())
         return super().load(stream)  # type: ignore
 
     def dump(self, data) -> Stream:

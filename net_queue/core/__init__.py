@@ -25,25 +25,31 @@ __all__ = (
 )
 
 
-_event = lambda uuid: None
 _serializer = PickleSerializer()
+
+
+def _nop_event_handler(peer: uuid.UUID) -> None:
+    """NOP event handler"""
 
 
 @dataclass(slots=True, frozen=True)
 class Message[T]:
     """Message object"""
+
     peer: uuid.UUID
     data: T
 
 
 class SessionState(enum.Flag):
     """Session state"""
+
     READABLE = enum.auto()
     WRITABLE = enum.auto()
 
 
 class NetworkLocation(NamedTuple):
     """Network location"""
+
     host: str = "127.0.0.1"
     port: int = 51966
 
@@ -55,6 +61,7 @@ class NetworkLocation(NamedTuple):
 @dataclass(order=False, slots=True, frozen=True)
 class ConnectionOptions:
     """Connection options"""
+
     get_merge: bool = True
     put_merge: bool = True
     drop_oldest: bool = True
@@ -66,6 +73,7 @@ class ConnectionOptions:
 @dataclass(order=False, slots=True, frozen=True)
 class SerializationOptions:
     """Serialization options"""
+
     load: col_abc.Callable[[Stream], typing.Any] = _serializer.load
     dump: col_abc.Callable[[typing.Any], Stream] = _serializer.dump
 
@@ -73,6 +81,7 @@ class SerializationOptions:
 @dataclass(order=False, slots=True, frozen=True)
 class SecurityOptions:
     """Security options"""
+
     key: Path | None = None
     cert: Path | None = None
 
@@ -80,13 +89,15 @@ class SecurityOptions:
 @dataclass(order=False, slots=True, frozen=True)
 class EventOptions:
     """Event options"""
-    ini: col_abc.Callable[[uuid.UUID], None] = _event
-    fin: col_abc.Callable[[uuid.UUID], None] = _event
+
+    ini: col_abc.Callable[[uuid.UUID], None] = _nop_event_handler
+    fin: col_abc.Callable[[uuid.UUID], None] = _nop_event_handler
 
 
 @dataclass(order=False, slots=True, frozen=True)
 class CommunicatorOptions:
     """Communicator options"""
+
     id: uuid.UUID = dataclasses.field(default_factory=uuid.uuid4)
     netloc: NetworkLocation = NetworkLocation()
     connection: ConnectionOptions = ConnectionOptions()

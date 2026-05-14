@@ -19,6 +19,7 @@ __all__ = ()
 
 class Mode(enum.StrEnum):
     """Test mode"""
+
     SYNC = enum.auto()
     ASYNC = enum.auto()
 

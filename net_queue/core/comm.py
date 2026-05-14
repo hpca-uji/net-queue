@@ -119,7 +119,7 @@ class Communicator[T](abc.ABC):
         session = self._sessions[peer]
         id_size = len(self.id.bytes)
 
-        for stream in session.get_flush_buffer():
+        for stream in session.get_flush_stream():
 
             # Handshake-like
             if stream.nbytes == id_size:
@@ -140,7 +140,7 @@ class Communicator[T](abc.ABC):
 
                 # Data (handshake-like)
                 else:
-                    stream.writebuffer(b)
+                    stream.writeview(b)
 
             # Queue limits
             if session._get_queue.qsize() >= self.options.connection.queue_size:

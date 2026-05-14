@@ -22,6 +22,7 @@ __all__ = (
 
 class Protocol[T](Communicator[T]):
     """Shared base gRPC implementation"""
+
     _compression = grpc.Compression.NoCompression
 
     def __init__(self, options: CommunicatorOptions = CommunicatorOptions()) -> None:
@@ -35,7 +36,7 @@ class Protocol[T](Communicator[T]):
 
         size = 0
         session.put_flush_queue()
-        for view in session.put_flush_buffer():
+        for view in session.put_flush_stream():
             with view:
                 yield bytes(view)
                 size += len(view)

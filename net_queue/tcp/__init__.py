@@ -175,7 +175,7 @@ class Protocol(Communicator[socket.socket]):
     @staticmethod
     def _socket_send_batch(comm: socket.socket, session: Session) -> int:
         """Send a buffer batch over socket"""
-        views = itertools.islice(session._put_stream.buffers, SC_IOV_MAX)
+        views = itertools.islice(session._put_stream.views, SC_IOV_MAX)
         size = comm.sendmsg(views)
         return session._put_stream.seek(size)
 

@@ -82,7 +82,7 @@ class Session:
         return not self._put_stream and not self._put_queue.qsize()
 
     def get(self) -> Stream:
-        """Unpack from get buffer"""
+        """Unpack from get stream"""
         return self._framer.unpack(self._get_stream, self._options.connection.message_size)
 
     def put(self, stream: Stream) -> Future[None]:
@@ -94,20 +94,19 @@ class Session:
         return future
 
     def get_write(self, b: col_abc.Buffer) -> int:
-        """Write get buffer"""
+        """Write get stream"""
         size = self._get_stream.write(b)
         self.get_optimize()
         return size
 
     def put_read(self) -> memoryview:
-        """Read put buffer"""
+        """Read put stream"""
         self.put_optimize()
         b = self._put_stream.read1(self._options.connection.transport_size)
         return b
 
     def get_optimize(self) -> None:
-        """Optimize get buffer"""
-
+        """Optimize get stream"""
         # Generate buffer
         if self._get_buffer is None and self._get_stream:
             try:
@@ -134,19 +133,19 @@ class Session:
                     self._framer.pack_header(stream, self._get_size)
                     stream.write(self._get_buffer.obj)
                     self._get_buffer = None
-                bs = list(stream.readbuffers())
+                chunks = list(stream.readviews())
 
-            for b in reversed(bs):
-                self._get_stream.unreadbuffer(b)
+            for chunk in reversed(chunks):
+                self._get_stream.unreadview(chunk)
 
     def put_optimize(self) -> None:
-        """Optimize put buffer"""
+        """Optimize put stream"""
         if len(self._put_stream) <= 1 or len(self._put_stream[0]) >= self._options.connection.transport_size:
             return
 
         assert self._put_buffer is not None, "Put buffer missing!"
         merge_size = self._put_stream.readinto(self._put_buffer)
-        self._put_stream.unreadbuffer(self._put_buffer[:merge_size])
+        self._put_stream.unreadview(self._put_buffer[:merge_size])
 
     def put_commit(self, size: int) -> col_abc.Iterable[Future[None]]:
         """Mark size's bytes as fully transmitted (or freeable)"""
@@ -165,8 +164,8 @@ class Session:
             self._ack_stream.popleft()
             yield future
 
-    def get_flush_buffer(self) -> col_abc.Iterable[Stream]:
-        """Flush get buffer"""
+    def get_flush_stream(self) -> col_abc.Iterable[Stream]:
+        """Flush get stream"""
         try:
             while True:
                 yield self.get()
@@ -184,8 +183,8 @@ class Session:
         except Empty:
             pass
 
-    def put_flush_buffer(self) -> col_abc.Iterable[memoryview]:
-        """Flush put buffer"""
+    def put_flush_stream(self) -> col_abc.Iterable[memoryview]:
+        """Flush put stream"""
         try:
             while True:
                 yield self.put_read()

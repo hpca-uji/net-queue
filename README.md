@@ -1,6 +1,21 @@
 # net-queue
 Zero-copy & lock-free network communications using queues
 
+Designed to make high-throughput network messaging simple, composable and efficient.
+
+- Zero-copy streaming using `memoryview` and file-like streams
+- Familiar `put()` / `get()` queue API
+- TCP, MQTT, gRPC and TLS support
+- Lock-free & thread-safe architecture
+- Automatic batching and vectored I/O (`sendmsg`)
+- Compatible with existing Python I/O ecosystem (`pickle`, `numpy`, `gzip`, etc.)
+- Pluggable serializers for objects, buffers or raw streams
+- FIFO ordering per peer
+- Built-in broadcast and peer-targeted messaging
+- Streaming and preallocated receive modes
+- Bounded memory usage and overload protection
+- Multi-GB/s throughput with minimal configuration
+
 ## Example
 ```python
 # server.py
@@ -30,9 +45,9 @@ with nq.new(purpose=nq.Purpose.CLIENT) as queue:
 
 | Test | Transfer | Operations | Executed |  
 |-|-|-|-|  
-| Sync | 17.18 GB | 8.0 K | python test/iops.py protocol purpose sync --step-size 0 --max-size 21 --reps 4_000 |  
-| Async | 17.18 GB | 8.0 K | python test/iops.py protocol purpose async --step-size 0 --max-size 21 --reps 4_000 |  
-| Mix | 8.59 GB | 8.19 K | python test/iops.py protocol purpose async --min-size 8 --step-size 2 --step-expo 0.5 --max-size 32 |  
+| Sync | 17.18 GB | 8.0 K | python net_queue/test/iops.py protocol purpose sync --step-size 0 --max-size 21 --reps 4_000 |  
+| Async | 17.18 GB | 8.0 K | python net_queue/test/iops.py protocol purpose async --step-size 0 --max-size 21 --reps 4_000 |  
+| Mix | 8.59 GB | 8.19 K | python net_queue/test/iops.py protocol purpose async --min-size 8 --step-size 2 --step-expo 0.5 --max-size 32 |  
 
 | Time | TCP | MQTT | gRPC |  
 |-|-|-|-|  
