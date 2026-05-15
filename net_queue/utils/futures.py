@@ -31,14 +31,6 @@ def background(func: abc.Callable, /, *args, **kwds):
     return future
 
 
-def disable_logger():
-    """Disable future logger"""
-    import sys
-    import logging
-    logger = logging.getLogger("concurrent.futures")
-    logger.setLevel(sys.maxsize)
-
-
 def set_running(future: Future) -> bool:
     """Set future running (if plausible)"""
     try:
@@ -116,6 +108,3 @@ def merge(*fs: Future, return_when=futures.ALL_COMPLETED) -> Future:
         set_result(future, None)
 
     return future
-
-
-disable_logger()
