@@ -285,6 +285,7 @@ class Communicator[T](abc.ABC):
         Future is resolved when data is safe to mutate again.
         Future may raise `ConnectionError(uuid.UUID)` if the peer or itself are closed.
         Future may raise protocol specific exceptions.
+        Futures per peer are available at `.futures`.
         """
         if not peers:
             with self._lock:
