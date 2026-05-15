@@ -46,7 +46,7 @@ class Communicator(Protocol, Server[socket.socket]):
 
     def _handle_connection(self, comm: socket.socket, event) -> None:
         """Handle connection events"""
-        # NOTE: communication thead
+        # NOTE: communication thread
         peer = self._set_default_peer(comm)
         session = self._sessions[peer]
 

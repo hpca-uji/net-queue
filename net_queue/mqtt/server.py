@@ -40,7 +40,7 @@ class Communicator(Protocol, Server[str]):
 
     def _c2s(self, client: mqtt_client.Client, userdata, mqtt_message: mqtt_client.MQTTMessage) -> None:
         """Client message handler"""
-        # NOTE: communication thead
+        # NOTE: communication thread
         comm = self._peer(mqtt_message)
         peer = self._set_default_peer(comm)
         session = self._sessions[peer]

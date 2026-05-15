@@ -180,7 +180,7 @@ class Communicator[T](abc.ABC):
 
     def _connection_ini(self, comm: T) -> uuid.UUID:
         """Handle new incomming connections"""
-        # NOTE: communication thead
+        # NOTE: communication thread
         peer = uuid.uuid4()  # temporary ID
 
         with self._lock:
