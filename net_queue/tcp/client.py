@@ -36,6 +36,8 @@ class Communicator(Protocol, Client[socket.socket]):
         self._comm.setblocking(False)
 
         self._selector.register(self._comm, selectors.EVENT_READ, self._handle_connection)
+        self._notify_selector()
+        self._start_loop()
 
         self._connection_ini(self._comm)
 

@@ -37,6 +37,7 @@ class Communicator(Protocol, Server[socket.socket]):
 
         self._selector.register(self._comm, selectors.EVENT_READ, self._new_connection)
         self._notify_selector()
+        self._start_loop()
 
     def _new_connection(self, comm: socket.socket, event) -> None:
         """Handle connection accept"""

@@ -46,13 +46,14 @@ class Protocol(Communicator[str]):
             self._client.tls_set(ca_certs=str(self.options.security.cert) if self.options.security.cert else None)
 
         self._client.connect(host=self.options.netloc.host, port=self.options.netloc.port)
-        self._client.loop_start()
+        self._start_loop()
 
     def _start_loop(self) -> None:
         """Start connection handling loop"""
         self._client.loop_start()
 
     def _stop_loop(self) -> None:
+        """Stop connection handling loop"""
         self._publish_queue.shutdown()
         self._client.loop_stop()
 

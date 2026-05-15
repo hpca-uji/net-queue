@@ -45,14 +45,11 @@ class Protocol(Communicator[socket.socket]):
         """Initialize communicator"""
         super().__init__(options)
 
+        self._task_queue = SimpleQueue[Task]()
         self._selector = selectors.DefaultSelector()
         self._control_socket = socket.socketpair()
         self._control_socket[1].setblocking(False)
         self._selector.register(self._control_socket[0], selectors.EVENT_READ, self._handle_control_socket)
-
-        self._loop_thread = background(self._handle_selector_loop)
-        self._loop_thread.add_done_callback(warn_exception)
-        self._task_queue = SimpleQueue[Task]()
 
         # Send fast-path
         if self.options.connection.put_merge and not self.options.security and hasattr(socket.socket, "sendmsg"):
@@ -61,13 +58,24 @@ class Protocol(Communicator[socket.socket]):
         # Receive fast-path
         if self.options.security:
             try:
-                from sabctools import unlocked_ssl_recv_into
+                from sabctools import unlocked_ssl_recv_into  # type: ignore
             except Exception:
                 self._socket_recv_into = ssl.SSLSocket.recv_into
             else:
                 self._socket_recv_into = unlocked_ssl_recv_into
         else:
             self._socket_recv_into = socket.socket.recv_into
+
+    def _start_loop(self) -> None:
+        """Start connection handling loop"""
+        self._loop_thread = background(self._handle_selector_loop)
+        self._loop_thread.add_done_callback(warn_exception)
+
+    def _stop_loop(self) -> None:
+        """Stop connection handling loop"""
+        self._control_socket[1].close()
+        self._loop_thread.result()
+        self._control_socket[0].close()
 
     def _handle_modify_selector(self, fileobj, events):
         """Handle selector modification"""
@@ -193,8 +201,6 @@ class Protocol(Communicator[socket.socket]):
 
     def _close(self) -> None:
         """Close the communication"""
-        self._control_socket[1].close()
-        self._loop_thread.result()
-        self._control_socket[0].close()
+        self._stop_loop()
         self._selector.close()
         super()._close()
