@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """net-queue IOPS test"""
 
 import sys
