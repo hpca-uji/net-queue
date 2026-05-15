@@ -36,7 +36,6 @@ class Communicator(Protocol, Server[socket.socket]):
             self._comm = context.wrap_socket(self._comm, server_side=True, do_handshake_on_connect=True)
 
         self._selector.register(self._comm, selectors.EVENT_READ, self._new_connection)
-        self._notify_selector()
         self._start_loop()
 
     def _new_connection(self, comm: socket.socket, event) -> None:

@@ -47,9 +47,6 @@ class Protocol(Communicator[socket.socket]):
 
         self._task_queue = SimpleQueue[Task]()
         self._selector = selectors.DefaultSelector()
-        self._control_socket = socket.socketpair()
-        self._control_socket[1].setblocking(False)
-        self._selector.register(self._control_socket[0], selectors.EVENT_READ, self._handle_control_socket)
 
         # Send fast-path
         if self.options.connection.put_merge and not self.options.security and hasattr(socket.socket, "sendmsg"):
@@ -68,6 +65,11 @@ class Protocol(Communicator[socket.socket]):
 
     def _start_loop(self) -> None:
         """Start connection handling loop"""
+        self._control_socket = socket.socketpair()
+        self._control_socket[1].setblocking(False)
+
+        self._selector.register(self._control_socket[0], selectors.EVENT_READ, self._handle_control_socket)
+
         self._loop_thread = background(self._handle_selector_loop)
         self._loop_thread.add_done_callback(warn_exception)
 
@@ -76,6 +78,7 @@ class Protocol(Communicator[socket.socket]):
         self._control_socket[1].close()
         self._loop_thread.result()
         self._control_socket[0].close()
+        self._selector.unregister(self._control_socket[0])
 
     def _handle_modify_selector(self, fileobj, events):
         """Handle selector modification"""
