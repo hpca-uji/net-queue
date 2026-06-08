@@ -2,7 +2,7 @@
 
 import re
 import pickle
-import warnings
+import logging
 from io import BytesIO
 from typing import Any
 from struct import Struct
@@ -17,6 +17,9 @@ __all__ = (
     "BufferSerializer",
     "PickleSerializer"
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 class StreamFramer:
@@ -93,7 +96,7 @@ class StreamFramer:
 
         # Write truncated header
         if extra > 0:
-            warnings.warn("Truncated stream!", ResourceWarning)
+            logger.debug(f"Truncated stream ({transport})")
             header = self._header.pack(extra)
             transport.unreadview(byteview(header))
 

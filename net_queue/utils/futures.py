@@ -1,9 +1,8 @@
 """Asynchronous utilities"""
 
-import warnings
+import logging
 from collections import abc
 from concurrent import futures
-from traceback import format_exception
 from concurrent.futures import Future, ThreadPoolExecutor
 
 
@@ -16,6 +15,9 @@ __all__ = (
     "set_exception",
     "warn_exception"
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 def queue(name: str = ""):
@@ -62,7 +64,7 @@ def set_exception(future: Future, exc: BaseException) -> bool:
 def warn_exception[T](future: Future[T]) -> None:
     """Future handler that warns about exceptions"""
     if (exc := future.exception()) is not None:
-        warnings.warn("".join(format_exception(exc)), RuntimeWarning)
+        logger.warning("Future exception", exc_info=exc)
 
 
 def merge(*fs: Future, return_when=futures.ALL_COMPLETED) -> Future:

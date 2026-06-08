@@ -4,7 +4,7 @@
 
 import abc
 import uuid
-import warnings
+import logging
 import threading
 from queue import Empty, SimpleQueue
 from concurrent.futures import Future, ThreadPoolExecutor
@@ -22,6 +22,9 @@ from net_queue.core import CommunicatorOptions, SessionState, Message
 __all__ = (
     "Communicator",
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 class Communicator[T](abc.ABC):
@@ -65,7 +68,7 @@ class Communicator[T](abc.ABC):
         """Send session ini message"""
         session = self._sessions[peer]
         if SessionState.WRITABLE in session.state:
-            warnings.warn("Sending session ini on writable stream", RuntimeWarning)
+            logger.warning("Sending session ini on writable stream")
         session.state |= SessionState.WRITABLE
         stream = Stream.frombuffer(self.id.bytes)
         self._put(stream, peer)
@@ -74,7 +77,7 @@ class Communicator[T](abc.ABC):
         """Send session fin message"""
         session = self._sessions[peer]
         if SessionState.WRITABLE not in session.state:
-            warnings.warn("Sending session fin on unwritable stream", RuntimeWarning)
+            logger.warning("Sending session fin on unwritable stream")
         session.state &= ~SessionState.WRITABLE
         stream = Stream.frombuffer(self.id.bytes)
         self._put(stream, peer)
@@ -83,7 +86,7 @@ class Communicator[T](abc.ABC):
         """Handle session initialize message"""
         session = self._sessions[peer]
         if SessionState.READABLE in session.state:
-            warnings.warn("Received session ini on readable stream", RuntimeWarning)
+            logger.warning("Received session ini on readable stream")
 
         comm = self._comms[peer]
 
@@ -109,7 +112,7 @@ class Communicator[T](abc.ABC):
         """Handle session finalize message"""
         session = self._sessions[peer]
         if SessionState.READABLE not in session.state:
-            warnings.warn("Received session fin on unreadable stream", RuntimeWarning)
+            logger.warning("Received session fin on unreadable stream")
         session.state &= ~SessionState.READABLE
 
         self._event_queue.submit(self.options.events.fin, session.peer).add_done_callback(futures.warn_exception)
@@ -144,7 +147,7 @@ class Communicator[T](abc.ABC):
 
             # Queue limits
             if session._get_queue.qsize() >= self.options.connection.queue_size:
-                warnings.warn(f"Dropping data for {peer} (queue full)")
+                logger.warning(f"Dropping data for {peer} (queue full)")
                 if not self.options.connection.drop_oldest:
                     continue
                 try:
@@ -153,6 +156,10 @@ class Communicator[T](abc.ABC):
                     pass
                 else:
                     session._get_queue.get_nowait()
+
+            # Assert state
+            # if SessionState.READABLE not in session.state:
+            #     logger.warning("Received message on unreadable stream")
 
             # Commit stream
             session._get_queue.put(stream)
@@ -287,10 +294,16 @@ class Communicator[T](abc.ABC):
         Future may raise protocol specific exceptions.
         Futures per peer are available at `.futures`.
         """
+        # Assert state
+        # if SessionState.WRITABLE not in self._sessions[self.id].state:
+        #     logger.warning("Sending message on unwritable stream")
+
+        # Get peers
         if not peers:
             with self._lock:
                 peers = tuple(self._comms)
 
+        # Queue streams
         futures = list[Future[None]]()
         with self.options.serialization.dump(data) as stream:
             for peer in peers:

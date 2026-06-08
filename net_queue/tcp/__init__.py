@@ -3,14 +3,13 @@
 import os
 import ssl
 import socket
-import warnings
+import logging
 import selectors
 import itertools
 from collections import abc
 from functools import partial
 from concurrent import futures
 from queue import Empty, SimpleQueue
-from traceback import format_exception
 
 from net_queue.core.comm import Communicator
 from net_queue.core import CommunicatorOptions
@@ -23,6 +22,7 @@ __all__ = (
 )
 
 
+# Types
 type Task = abc.Callable[[], None]
 
 
@@ -36,6 +36,8 @@ except Exception:
 # Sentinel objects
 CONTROL_STOP = object()
 CONTROL_EVENT = b"\0"
+
+logger = logging.getLogger(__name__)
 
 
 class Protocol(Communicator[socket.socket]):
@@ -132,7 +134,7 @@ class Protocol(Communicator[socket.socket]):
                 try:
                     result = future.result()
                 except Exception as exc:
-                    warnings.warn("".join(format_exception(exc)), RuntimeWarning)
+                    logger.warning("Selector handler exception", exc_info=exc)
                 else:
                     if result is CONTROL_STOP:
                         running = False
@@ -166,7 +168,7 @@ class Protocol(Communicator[socket.socket]):
 
         if not size:
             if session.state or not session.put_empty():
-                warnings.warn(f"Lost connection unexpectedly ({comm})", RuntimeWarning)
+                logger.warning(f"Lost connection unexpectedly ({comm})!")
             return
 
         self._process_gets(peer)
