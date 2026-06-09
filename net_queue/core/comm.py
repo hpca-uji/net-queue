@@ -67,31 +67,39 @@ class Communicator[T](abc.ABC):
     def _session_ini(self, peer: uuid.UUID) -> None:
         """Send session ini message"""
         session = self._sessions[peer]
+
+        # Assert state
         if SessionState.WRITABLE in session.state:
             logger.warning("Sending session ini on writable stream")
-        session.state |= SessionState.WRITABLE
+
         stream = Stream.frombuffer(self.id.bytes)
+        session.state |= SessionState.WRITABLE
         self._put(stream, peer)
 
     def _session_fin(self, peer: uuid.UUID) -> None:
         """Send session fin message"""
         session = self._sessions[peer]
+
+        # Assert state
         if SessionState.WRITABLE not in session.state:
             logger.warning("Sending session fin on unwritable stream")
-        session.state &= ~SessionState.WRITABLE
+
         stream = Stream.frombuffer(self.id.bytes)
         self._put(stream, peer)
+        session.state &= ~SessionState.WRITABLE
 
     def _handle_session_ini(self, peer: uuid.UUID, id: uuid.UUID) -> None:
         """Handle session initialize message"""
         session = self._sessions[peer]
+
+        # Assert state
         if SessionState.READABLE in session.state:
             logger.warning("Received session ini on readable stream")
 
-        comm = self._comms[peer]
+        session.state |= SessionState.READABLE
 
         session.peer = id
-        session.state |= SessionState.READABLE
+        comm = self._comms[peer]
 
         with self._lock:
             # New ID, move session from tmp ID
@@ -111,8 +119,11 @@ class Communicator[T](abc.ABC):
     def _handle_session_fin(self, peer: uuid.UUID, id: uuid.UUID) -> None:
         """Handle session finalize message"""
         session = self._sessions[peer]
+
+        # Assert state
         if SessionState.READABLE not in session.state:
             logger.warning("Received session fin on unreadable stream")
+
         session.state &= ~SessionState.READABLE
 
         self._event_queue.submit(self.options.events.fin, session.peer).add_done_callback(futures.warn_exception)
@@ -158,8 +169,8 @@ class Communicator[T](abc.ABC):
                     session._get_queue.get_nowait()
 
             # Assert state
-            # if SessionState.READABLE not in session.state:
-            #     logger.warning("Received message on unreadable stream")
+            if SessionState.READABLE not in session.state:
+                logger.warning("Received message on unreadable stream")
 
             # Commit stream
             session._get_queue.put(stream)
@@ -268,13 +279,21 @@ class Communicator[T](abc.ABC):
             session = self._sessions[peer]
         except KeyError:
             session = None
+
         if session:
+            # Assert state
+            if SessionState.WRITABLE not in session.state:
+                logger.warning("Sending message on unwritable stream")
+
+            # Commit stream
             future = session.put(stream)
         else:
             future = Future[None]()
             futures.set_exception(future, ConnectionResetError(peer))
+
         if self._closed:
             futures.set_exception(future, ConnectionAbortedError(self.id))
+
         return future
 
     def put(self, data, *peers: uuid.UUID) -> Future[None]:
@@ -294,10 +313,6 @@ class Communicator[T](abc.ABC):
         Future may raise protocol specific exceptions.
         Futures per peer are available at `.futures`.
         """
-        # Assert state
-        # if SessionState.WRITABLE not in self._sessions[self.id].state:
-        #     logger.warning("Sending message on unwritable stream")
-
         # Get peers
         if not peers:
             with self._lock:
