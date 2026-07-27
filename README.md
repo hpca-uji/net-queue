@@ -307,11 +307,11 @@ pip install -e .
 
   - `load(data: Stream) -> Any`
 
-    Transform a data into a stream
+    Transform a stream into useful data
 
   - `dump(data: Any) -> Stream`
 
-    Transform a stream into useful data
+    Transform a data into a stream
 
   ---
 
