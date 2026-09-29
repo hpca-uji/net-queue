@@ -143,7 +143,7 @@ class Session:
         if len(self._put_stream) <= 1 or len(self._put_stream[0]) >= self._options.connection.transport_size:
             return
 
-        assert self._put_buffer is not None, "Put buffer missing!"
+        assert self._put_buffer is not None, "Put buffer missing"
         merge_size = self._put_stream.readinto(self._put_buffer)
         self._put_stream.unreadview(self._put_buffer[:merge_size])
 

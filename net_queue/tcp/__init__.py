@@ -178,19 +178,28 @@ class Protocol(Communicator[socket.socket]):
     def _socket_send(comm: socket.socket, session: Session) -> int:
         """Send an optimally-sized buffer over socket"""
         session.put_optimize()
-        with session._put_stream[0] as view:
-            try:
-                size = comm.send(view)
-            except (ssl.SSLWantReadError, ssl.SSLWantWriteError):
-                pass
-            return session._put_stream.seek(size)
+        view = session._put_stream[0]
+        try:
+            size = comm.send(view)
+        except (ssl.SSLWantReadError, ssl.SSLWantWriteError):
+            size = 0
+        else:
+            seek = session._put_stream.seek(size)
+            assert seek == size, "Stream and socket desynced"
+        return size
 
     @staticmethod
     def _socket_send_batch(comm: socket.socket, session: Session) -> int:
         """Send a buffer batch over socket"""
         views = itertools.islice(session._put_stream.views, SC_IOV_MAX)
-        size = comm.sendmsg(views)
-        return session._put_stream.seek(size)
+        try:
+            size = comm.sendmsg(views)
+        except (ssl.SSLWantReadError, ssl.SSLWantWriteError):
+            size = 0
+        else:
+            seek = session._put_stream.seek(size)
+            assert seek == size, "Stream and socket desynced"
+        return size
 
     def _handle_send(self, comm: socket.socket) -> None:
         """Send communication"""
